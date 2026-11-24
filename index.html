@@ -42,8 +42,19 @@ button{border:0;border-radius:7px;padding:10px 14px;cursor:pointer;font-weight:b
 const TABLE_MATERIEL="MATERIEL",TABLE_UTILISATEURS="Utilisateurs",TABLE_DEMANDES="DEMANDES",TABLE_SUIVI="SUIVI_DEMANDES";
 const STATUTS_RESERVANTS=["En attente","Validée","Prêtée"];
 let materiels=[],utilisateurs=[],demandes=[],lignes=[],currentUserRecord=null,panier=[];
+let sessionUser=null, utilisateursCharges=false;
 const $=id=>document.getElementById(id);
 
+function resolveUser(user){
+  if(user) sessionUser=user;
+  currentUserRecord=null;
+  if(!utilisateursCharges || !sessionUser) return;
+  const email=String(sessionUser.email||"").trim().toLowerCase();
+  if(!email) return;
+  currentUserRecord=utilisateurs.find(u=>
+    String(u.Email||"").trim().toLowerCase()===email
+  )||null;
+}
 function rowsFromGrist(data){
   if(!data||!Array.isArray(data.id))return [];
   return data.id.map((id,i)=>{const r={id};for(const k of Object.keys(data))if(k!=="id")r[k]=data[k][i];return r;});
@@ -86,13 +97,19 @@ function stockDisponible(id,debut,fin){
 async function chargerDonnees(){
   const [m,u,d,s]=await Promise.all([grist.docApi.fetchTable(TABLE_MATERIEL),grist.docApi.fetchTable(TABLE_UTILISATEURS),grist.docApi.fetchTable(TABLE_DEMANDES),grist.docApi.fetchTable(TABLE_SUIVI)]);
   materiels=rowsFromGrist(m);utilisateurs=rowsFromGrist(u);demandes=rowsFromGrist(d);lignes=rowsFromGrist(s);
-  // Identification conservée : window.grist.user.email rapproché de Utilisateurs.Email.
-  const email=window.grist&&window.grist.user&&window.grist.user.email?window.grist.user.email.toLowerCase():"";
-  currentUserRecord=email?utilisateurs.find(u=>u.Email&&u.Email.toLowerCase()===email):null;
+  // L'identité est résolue exclusivement depuis la session Grist (grist.onUser).
+  utilisateursCharges = true;
+  resolveUser(sessionUser);
   afficherIdentite();afficherCatalogue();afficherPanier();afficherMesDemandes();afficherDemandesATraiter();afficherPretsEnCours();afficherSuppressionsATraiter();verifierFormulaire();
 }
 function afficherIdentite(){
-  if(!currentUserRecord){$("identity").className="error";$("identity").textContent="Profil introuvable dans Utilisateurs. Vérifiez la correspondance entre l'adresse Grist et Utilisateurs.Email.";return;}
+  if(!currentUserRecord){
+    $("identity").className="error";
+    $("identity").textContent=!sessionUser
+      ?"Session Grist non reçue : impossible de déterminer votre identité."
+      :"Profil introuvable dans Utilisateurs pour l'adresse de la session Grist. Vérifiez Utilisateurs.Email.";
+    return;
+  }
   $("identity").className="ok";$("identity").textContent=`Connecté : ${currentUserRecord.NomComplet||currentUserRecord.Email} — Service : ${currentUserRecord.Service||"non renseigné"}`;
 }
 function afficherCatalogue(){
@@ -285,6 +302,18 @@ async function refuserSuppression(l){
 function actualiserMinimumDate(){const n=new Date(),local=new Date(n.getTime()-n.getTimezoneOffset()*60000).toISOString().slice(0,16);$("debut").min=local;$("fin").min=local;}
 ["materiel","quantite","debut","fin"].forEach(id=>{ $(id).addEventListener("change",()=>{actualiserMinimumDate();verifierFormulaire();});$(id).addEventListener("input",()=>{actualiserMinimumDate();verifierFormulaire();}); });
 $("ajouter").addEventListener("click",ajouterAuPanier);$("envoyer").addEventListener("click",envoyerDemande);
-actualiserMinimumDate();grist.ready({requiredAccess:"full"});
+actualiserMinimumDate();
+grist.ready({requiredAccess:"full"});
+grist.onUser(user=>{
+  if(user){
+    sessionUser=user;
+    if(utilisateursCharges){
+      resolveUser(user);
+      afficherIdentite();afficherCatalogue();afficherPanier();afficherMesDemandes();
+      afficherDemandesATraiter();afficherPretsEnCours();afficherSuppressionsATraiter();
+      verifierFormulaire();
+    }
+  }
+});
 chargerDonnees().catch(e=>{$("identity").className="error";$("identity").textContent="Erreur de connexion à Grist : "+(e.message||e);});
 </script></body></html>
