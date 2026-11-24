@@ -46,16 +46,38 @@ button{border:0;border-radius:7px;padding:10px 14px;cursor:pointer;font-weight:b
 
 <script>
 const VERSION_WIDGET="1.0.0";
-const TABLE_MATERIEL="MATERIEL",TABLE_UTILISATEURS="Utilisateurs",TABLE_DEMANDES="DEMANDES",TABLE_SUIVI="SUIVI_DEMANDES";
+const TABLE_MATERIEL="MATERIEL",TABLE_UTILISATEURS="Utilisateurs",TABLE_IDENTIFICATION="Identification",TABLE_DEMANDES="DEMANDES",TABLE_SUIVI="SUIVI_DEMANDES";
 const STATUTS_RESERVANTS=["En attente","Validée","Prêtée"];
 let materiels=[],utilisateurs=[],demandes=[],lignes=[],currentUserRecord=null,panier=[];
 const $=id=>document.getElementById(id);
 
-function identifierUtilisateur(){
+async function identifierUtilisateur(){
   currentUserRecord=null;
-  const email=String(window.grist&&window.grist.user&&window.grist.user.email||"").trim().toLowerCase();
-  if(!email)return;
-  currentUserRecord=utilisateurs.find(u=>String(u.Email||"").trim().toLowerCase()===email)||null;
+
+  // L'identité est fournie par la table Identification, filtrée par les permissions Grist.
+  const raw=await grist.docApi.fetchTable(TABLE_IDENTIFICATION);
+  const identites=rowsFromGrist(raw);
+
+  if(identites.length!==1){
+    throw new Error(
+      identites.length===0
+        ?"Aucune ligne visible dans la table Identification. Vérifiez les permissions avancées de cette table."
+        :"Plusieurs lignes visibles dans la table Identification. Chaque utilisateur doit voir exactement une seule ligne."
+    );
+  }
+
+  const email=String(identites[0].Email||"").trim().toLowerCase();
+  if(!email){
+    throw new Error("La colonne Email de la table Identification est vide.");
+  }
+
+  currentUserRecord=utilisateurs.find(u=>
+    String(u.Email||"").trim().toLowerCase()===email
+  )||null;
+
+  if(!currentUserRecord){
+    throw new Error("Aucun profil correspondant à "+email+" dans la table Utilisateurs. Vérifiez les adresses électroniques des deux tables.");
+  }
 }
 function rowsFromGrist(data){
   if(!data||!Array.isArray(data.id))return [];
@@ -99,18 +121,15 @@ function stockDisponible(id,debut,fin){
 async function chargerDonnees(){
   const [m,u,d,s]=await Promise.all([grist.docApi.fetchTable(TABLE_MATERIEL),grist.docApi.fetchTable(TABLE_UTILISATEURS),grist.docApi.fetchTable(TABLE_DEMANDES),grist.docApi.fetchTable(TABLE_SUIVI)]);
   materiels=rowsFromGrist(m);utilisateurs=rowsFromGrist(u);demandes=rowsFromGrist(d);lignes=rowsFromGrist(s);
-  // Identification par la méthode historique du widget : window.grist.user.email.
-  identifierUtilisateur();
+  // Identification sécurisée par la ligne unique rendue visible dans la table Identification.
+  await identifierUtilisateur();
   afficherIdentite();afficherCatalogue();afficherPanier();afficherMesDemandes();afficherDemandesATraiter();afficherPretsEnCours();afficherSuppressionsATraiter();verifierFormulaire();
 }
 function afficherIdentite(){
   $("version-widget").textContent="Widget Matériel — version "+VERSION_WIDGET;
   if(!currentUserRecord){
     $("identity").className="error";
-    const email=window.grist&&window.grist.user&&window.grist.user.email;
-    $("identity").textContent=!email
-      ?"Impossible de récupérer votre adresse de session Grist (window.grist.user.email)."
-      :"Profil introuvable dans la table Utilisateurs pour l'adresse "+email+". Vérifiez la colonne Utilisateurs.Email.";
+    $("identity").textContent="Identité non vérifiée. Consultez le message d'erreur de connexion ci-dessous.";
     return;
   }
   $("identity").className="ok";
