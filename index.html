@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="fr">
 <head>
@@ -16,7 +17,12 @@ button{border:0;border-radius:7px;padding:10px 14px;cursor:pointer;font-weight:b
 @media(max-width:650px){body{padding:12px}.grid{grid-template-columns:1fr}.cart-line{grid-template-columns:1fr 85px}.cart-line button{grid-column:1/-1}}
 </style></head>
 <body>
+<div class="page-header">
+<div>
 <h2>Gestion des prêts de matériel</h2>
+<div id="version-widget" class="small"></div>
+</div>
+</div>
 <div id="identity" class="info">Connexion à Grist et identification de votre profil…</div>
 <section class="panel">
 <h3>Nouvelle demande de prêt</h3>
@@ -39,21 +45,17 @@ button{border:0;border-radius:7px;padding:10px 14px;cursor:pointer;font-weight:b
 <section class="panel"><h3>Demandes de suppression à examiner</h3><div id="suppressions-a-traiter">Chargement…</div></section>
 
 <script>
+const VERSION_WIDGET="1.0.0";
 const TABLE_MATERIEL="MATERIEL",TABLE_UTILISATEURS="Utilisateurs",TABLE_DEMANDES="DEMANDES",TABLE_SUIVI="SUIVI_DEMANDES";
 const STATUTS_RESERVANTS=["En attente","Validée","Prêtée"];
 let materiels=[],utilisateurs=[],demandes=[],lignes=[],currentUserRecord=null,panier=[];
-let sessionUser=null, utilisateursCharges=false;
 const $=id=>document.getElementById(id);
 
-function resolveUser(user){
-  if(user) sessionUser=user;
+function identifierUtilisateur(){
   currentUserRecord=null;
-  if(!utilisateursCharges || !sessionUser) return;
-  const email=String(sessionUser.email||"").trim().toLowerCase();
-  if(!email) return;
-  currentUserRecord=utilisateurs.find(u=>
-    String(u.Email||"").trim().toLowerCase()===email
-  )||null;
+  const email=String(window.grist&&window.grist.user&&window.grist.user.email||"").trim().toLowerCase();
+  if(!email)return;
+  currentUserRecord=utilisateurs.find(u=>String(u.Email||"").trim().toLowerCase()===email)||null;
 }
 function rowsFromGrist(data){
   if(!data||!Array.isArray(data.id))return [];
@@ -97,20 +99,22 @@ function stockDisponible(id,debut,fin){
 async function chargerDonnees(){
   const [m,u,d,s]=await Promise.all([grist.docApi.fetchTable(TABLE_MATERIEL),grist.docApi.fetchTable(TABLE_UTILISATEURS),grist.docApi.fetchTable(TABLE_DEMANDES),grist.docApi.fetchTable(TABLE_SUIVI)]);
   materiels=rowsFromGrist(m);utilisateurs=rowsFromGrist(u);demandes=rowsFromGrist(d);lignes=rowsFromGrist(s);
-  // L'identité est résolue exclusivement depuis la session Grist (grist.onUser).
-  utilisateursCharges = true;
-  resolveUser(sessionUser);
+  // Identification par la méthode historique du widget : window.grist.user.email.
+  identifierUtilisateur();
   afficherIdentite();afficherCatalogue();afficherPanier();afficherMesDemandes();afficherDemandesATraiter();afficherPretsEnCours();afficherSuppressionsATraiter();verifierFormulaire();
 }
 function afficherIdentite(){
+  $("version-widget").textContent="Widget Matériel — version "+VERSION_WIDGET;
   if(!currentUserRecord){
     $("identity").className="error";
-    $("identity").textContent=!sessionUser
-      ?"Session Grist non reçue : impossible de déterminer votre identité."
-      :"Profil introuvable dans Utilisateurs pour l'adresse de la session Grist. Vérifiez Utilisateurs.Email.";
+    const email=window.grist&&window.grist.user&&window.grist.user.email;
+    $("identity").textContent=!email
+      ?"Impossible de récupérer votre adresse de session Grist (window.grist.user.email)."
+      :"Profil introuvable dans la table Utilisateurs pour l'adresse "+email+". Vérifiez la colonne Utilisateurs.Email.";
     return;
   }
-  $("identity").className="ok";$("identity").textContent=`Connecté : ${currentUserRecord.NomComplet||currentUserRecord.Email} — Service : ${currentUserRecord.Service||"non renseigné"}`;
+  $("identity").className="ok";
+  $("identity").textContent=`Connecté : ${currentUserRecord.NomComplet||currentUserRecord.Email} — Service : ${currentUserRecord.Service||"non renseigné"}`;
 }
 function afficherCatalogue(){
   const s=$("materiel");s.innerHTML='<option value="">Choisir un matériel</option>';
@@ -137,7 +141,7 @@ function verifierFormulaire(){
 }
 function afficherPanier(){
   const z=$("panier");z.innerHTML="";
-  if(!panier.length){z.className="empty";z.textContent="Aucun matériel ajouté.";$("envoyer").disabled=true;return;}
+  if(!panier.length){z.className="empty";z.textContent="Aucun matériel ajouté."; $("envoyer").disabled=true;return;}
   z.className="";
   panier.forEach((x,i)=>{const m=materielParId(x.materielId),r=document.createElement("div");r.className="cart-line";
     const n=document.createElement("div");n.textContent=`${m?m.Materiel:"Matériel inconnu"} — ${m?m.ServicePreteur:"service prêteur inconnu"}`;
@@ -304,16 +308,5 @@ function actualiserMinimumDate(){const n=new Date(),local=new Date(n.getTime()-n
 $("ajouter").addEventListener("click",ajouterAuPanier);$("envoyer").addEventListener("click",envoyerDemande);
 actualiserMinimumDate();
 grist.ready({requiredAccess:"full"});
-grist.onUser(user=>{
-  if(user){
-    sessionUser=user;
-    if(utilisateursCharges){
-      resolveUser(user);
-      afficherIdentite();afficherCatalogue();afficherPanier();afficherMesDemandes();
-      afficherDemandesATraiter();afficherPretsEnCours();afficherSuppressionsATraiter();
-      verifierFormulaire();
-    }
-  }
-});
 chargerDonnees().catch(e=>{$("identity").className="error";$("identity").textContent="Erreur de connexion à Grist : "+(e.message||e);});
 </script></body></html>
