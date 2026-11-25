@@ -13,7 +13,7 @@ h2{margin:0 0 18px;font-size:21px}h3{font-size:16px;margin:0 0 14px}.panel{backg
 input,select,textarea{width:100%;border:1px solid var(--border);border-radius:7px;padding:11px;font:inherit;background:#fff}textarea{min-height:70px;resize:vertical}
 button{border:0;border-radius:7px;padding:10px 14px;cursor:pointer;font-weight:bold}button:disabled{opacity:.45;cursor:not-allowed}.primary{background:var(--blue);color:white}.success{background:#d8f3e5;color:#126b47}.danger{background:#fde3e3;color:#a72b35}.neutral{background:#edf2ff;color:#2945a6}
 .info,.error,.ok{padding:12px;border-radius:8px;margin:10px 0;font-size:14px}.info{background:#edf2ff}.error{background:#fde8e8;color:#a72b35}.ok{background:#e2f5eb;color:#126b47}.small{font-size:12px;color:var(--muted)}
-.request{border:1px solid var(--border);padding:13px;border-radius:8px;margin:10px 0;background:white}.request-header{display:flex;justify-content:space-between;gap:12px;margin-bottom:6px}.actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center}.cart-line{display:grid;grid-template-columns:minmax(0,1fr) 100px auto;gap:9px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}.empty{color:var(--muted);font-size:14px;padding:8px 0}
+.request{border:1px solid var(--border);padding:13px;border-radius:8px;margin:10px 0;background:white}.history-section{margin-top:22px;padding-top:18px;border-top:1px solid var(--border)}.request-header{display:flex;justify-content:space-between;gap:12px;margin-bottom:6px}.actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center}.cart-line{display:grid;grid-template-columns:minmax(0,1fr) 100px auto;gap:9px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}.empty{color:var(--muted);font-size:14px;padding:8px 0}
 @media(max-width:650px){body{padding:12px}.grid{grid-template-columns:1fr}.cart-line{grid-template-columns:1fr 85px}.cart-line button{grid-column:1/-1}}
 </style></head>
 <body>
@@ -401,9 +401,6 @@ function afficherMesDemandes(){
     zoneHistorique.appendChild(b);
   });
 }
-
-  });
-}
 function afficherDemandesATraiter(){
   const z=$("a-traiter");z.innerHTML="";if(!currentUserRecord){z.textContent="Profil non identifié.";return;}
   const list=lignes.filter(l=>estReferentDeLigne(l)&&l.StatutDemande==="En attente");
@@ -508,7 +505,6 @@ async function annulerLigne(l){
       (e.message||e)
     );
   }
-}
 }
 async function demanderSuppression(l){
   if(!estDemandeurDeLigne(l)){alert("Seul le demandeur peut demander la suppression de sa ligne.");return;}
