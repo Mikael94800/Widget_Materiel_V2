@@ -13,7 +13,7 @@ h2{margin:0 0 18px;font-size:21px}h3{font-size:16px;margin:0 0 14px}.panel{backg
 input,select,textarea{width:100%;border:1px solid var(--border);border-radius:7px;padding:11px;font:inherit;background:#fff}textarea{min-height:70px;resize:vertical}
 button{border:0;border-radius:7px;padding:10px 14px;cursor:pointer;font-weight:bold}button:disabled{opacity:.45;cursor:not-allowed}.primary{background:var(--blue);color:white}.success{background:#d8f3e5;color:#126b47}.danger{background:#fde3e3;color:#a72b35}.neutral{background:#edf2ff;color:#2945a6}
 .info,.error,.ok{padding:12px;border-radius:8px;margin:10px 0;font-size:14px}.info{background:#edf2ff}.error{background:#fde8e8;color:#a72b35}.ok{background:#e2f5eb;color:#126b47}.small{font-size:12px;color:var(--muted)}
-.request{border:1px solid var(--border);padding:13px;border-radius:8px;margin:10px 0;background:white}.history-section{margin-top:22px;padding-top:18px;border-top:1px solid var(--border)}.request-header{display:flex;justify-content:space-between;gap:12px;margin-bottom:6px}.actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center}.cart-line{display:grid;grid-template-columns:minmax(0,1fr) 100px auto;gap:9px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}.empty{color:var(--muted);font-size:14px;padding:8px 0}
+.request{border:1px solid var(--border);padding:13px;border-radius:8px;margin:10px 0;background:white}.history-panel{margin-top:28px}.history-panel details>summary{cursor:pointer;font-weight:bold;font-size:16px;list-style-position:inside}.history-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:16px 0}.history-controls label{min-width:145px}.history-controls select{max-width:320px}.request-header{display:flex;justify-content:space-between;gap:12px;margin-bottom:6px}.actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center}.cart-line{display:grid;grid-template-columns:minmax(0,1fr) 100px auto;gap:9px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}.empty{color:var(--muted);font-size:14px;padding:8px 0}
 @media(max-width:650px){body{padding:12px}.grid{grid-template-columns:1fr}.cart-line{grid-template-columns:1fr 85px}.cart-line button{grid-column:1/-1}}
 </style></head>
 <body>
@@ -39,10 +39,26 @@ button{border:0;border-radius:7px;padding:10px 14px;cursor:pointer;font-weight:b
 <div id="message"></div><button id="envoyer" class="primary" disabled>Envoyer la demande complète</button>
 <p class="small">Votre identité et votre service sont récupérés depuis votre profil Grist. Chaque matériel est suivi séparément.</p>
 </section>
-<section class="panel">   <h3>Mes demandes en cours</h3>   <div id="mes-demandes">Chargement…</div>    <div class="history-section">     <h3>Historique des demandes</h3>     <div id="historique-demandes">Chargement…</div>   </div> </section>
+<section class="panel"><h3>Mes demandes en cours</h3><div id="mes-demandes">Chargement…</div></section>
 <section class="panel"><h3>Demandes à traiter par mon service prêteur</h3><div id="a-traiter">Chargement…</div></section>
 <section class="panel"><h3>Prêts en cours et restitutions</h3><div id="prets-en-cours">Chargement…</div></section>
 <section class="panel"><h3>Demandes de suppression à examiner</h3><div id="suppressions-a-traiter">Chargement…</div></section>
+<section class="panel history-panel">
+  <details id="historique-conteneur">
+    <summary>Historique des demandes</summary>
+    <div class="history-controls">
+      <label for="filtre-historique">Rechercher par statut</label>
+      <select id="filtre-historique">
+        <option value="">Toutes les demandes archivées</option>
+        <option value="Validée">Validées</option>
+        <option value="Annulée">Annulées</option>
+        <option value="Refusée">Refusées</option>
+        <option value="Clôturée">Clôturées</option>
+      </select>
+    </div>
+    <div id="historique-demandes">Chargement…</div>
+  </details>
+</section>
 
 <script>
 const VERSION_WIDGET="1.0.0";
@@ -215,14 +231,12 @@ function explicationStatutGlobal(statut,items){
 }
 
 function afficherMesDemandes(){
-  const zoneEnCours=$("mes-demandes");
-  const zoneHistorique=$("historique-demandes");
-  zoneEnCours.innerHTML="";
-  zoneHistorique.innerHTML="";
+  const zone=$("mes-demandes");
+  zone.innerHTML="";
 
   if(!currentUserRecord){
-    zoneEnCours.textContent="Profil non identifié.";
-    zoneHistorique.textContent="Profil non identifié.";
+    zone.textContent="Profil non identifié.";
+    afficherHistoriqueDemandes();
     return;
   }
 
@@ -230,16 +244,15 @@ function afficherMesDemandes(){
     .filter(d=>Number(d.Demandeur)===Number(currentUserRecord.id))
     .sort((a,b)=>Number(b.id)-Number(a.id));
 
-  // Seules les demandes entièrement terminées passent dans l'historique.
-  const statutsTermines=["Annulée","Refusée","Clôturée"];
-  const enCours=mine.filter(d=>!statutsTermines.includes(d.StatutGlobal));
-  const historique=mine.filter(d=>statutsTermines.includes(d.StatutGlobal));
+  // Les demandes validées sont consultables dans l'historique, mais restent
+  // annulables tant que le matériel n'a pas été remis.
+  const statutsArchives=["Validée","Annulée","Refusée","Clôturée"];
+  const enCours=mine.filter(d=>!statutsArchives.includes(d.StatutGlobal));
 
   if(!enCours.length){
-    zoneEnCours.innerHTML='<div class="empty">Aucune demande en cours.</div>';
+    zone.innerHTML='<div class="empty">Aucune demande en cours.</div>';
   }
 
-  // AFFICHAGE DES DEMANDES EN COURS
   enCours.forEach(d=>{
     const items=lignesDemande(d.id);
     const b=creerBlocTitre(
@@ -332,21 +345,41 @@ function afficherMesDemandes(){
       b.appendChild(sub);
     });
 
-    zoneEnCours.appendChild(b);
+    zone.appendChild(b);
   });
 
-  // AFFICHAGE DE L'HISTORIQUE
+  afficherHistoriqueDemandes();
+}
+
+function afficherHistoriqueDemandes(){
+  const zone=$("historique-demandes");
+  const filtre=$("filtre-historique")?.value||"";
+  zone.innerHTML="";
+
+  if(!currentUserRecord){
+    zone.textContent="Profil non identifié.";
+    return;
+  }
+
+  const statutsArchives=["Validée","Annulée","Refusée","Clôturée"];
+  const historique=demandes
+    .filter(d=>
+      Number(d.Demandeur)===Number(currentUserRecord.id) &&
+      statutsArchives.includes(d.StatutGlobal) &&
+      (!filtre || d.StatutGlobal===filtre)
+    )
+    .sort((a,b)=>Number(b.id)-Number(a.id));
+
   if(!historique.length){
-    zoneHistorique.innerHTML=
-      '<div class="empty">Aucune demande passée pour le moment.</div>';
+    zone.innerHTML='<div class="empty">Aucune demande ne correspond à ce statut dans votre historique.</div>';
+    return;
   }
 
   historique.forEach(d=>{
     const items=lignesDemande(d.id);
-
     const b=creerBlocTitre(
       d.IdDemande||`Demande n° ${d.id}`,
-      d.StatutGlobal
+      d.StatutGlobal||"Statut non renseigné"
     );
 
     ajouterTexte(
@@ -377,7 +410,6 @@ function afficherMesDemandes(){
             "small"
           );
         }
-
         if(l.MotifAnnulation){
           ajouterTexte(
             sub,
@@ -395,12 +427,31 @@ function afficherMesDemandes(){
         );
       }
 
+      // Une demande validée peut encore être annulée tant que la remise
+      // n'a pas été confirmée : on conserve donc cette action dans l'historique.
+      if(
+        d.StatutGlobal==="Validée" &&
+        Number(d.Demandeur)===Number(currentUserRecord.id) &&
+        l.StatutDemande==="Validée"
+      ){
+        const actions=document.createElement("div");
+        actions.className="actions";
+        ajouterBouton(
+          actions,
+          "Annuler cet équipement",
+          "neutral",
+          ()=>annulerLigne(l)
+        );
+        sub.appendChild(actions);
+      }
+
       b.appendChild(sub);
     });
 
-    zoneHistorique.appendChild(b);
+    zone.appendChild(b);
   });
 }
+
 function afficherDemandesATraiter(){
   const z=$("a-traiter");z.innerHTML="";if(!currentUserRecord){z.textContent="Profil non identifié.";return;}
   const list=lignes.filter(l=>estReferentDeLigne(l)&&l.StatutDemande==="En attente");
@@ -535,6 +586,7 @@ async function refuserSuppression(l){
 function actualiserMinimumDate(){const n=new Date(),local=new Date(n.getTime()-n.getTimezoneOffset()*60000).toISOString().slice(0,16);$("debut").min=local;$("fin").min=local;}
 ["materiel","quantite","debut","fin"].forEach(id=>{ $(id).addEventListener("change",()=>{actualiserMinimumDate();verifierFormulaire();});$(id).addEventListener("input",()=>{actualiserMinimumDate();verifierFormulaire();}); });
 $("ajouter").addEventListener("click",ajouterAuPanier);$("envoyer").addEventListener("click",envoyerDemande);
+$("filtre-historique").addEventListener("change",afficherHistoriqueDemandes);
 actualiserMinimumDate();
 grist.ready({requiredAccess:"full"});
 chargerDonnees().catch(e=>{$("identity").className="error";$("identity").textContent="Erreur de connexion à Grist : "+(e.message||e);});
