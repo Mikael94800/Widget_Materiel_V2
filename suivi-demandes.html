@@ -638,6 +638,7 @@ async function refuserSuppression(l){
 ["materiel","quantite","debut-heure","fin-heure"].forEach(id=>{$(id).addEventListener("change",verifierFormulaire);$(id).addEventListener("input",verifierFormulaire);});
 ["debut","fin"].forEach(id=>$(id).addEventListener("change",verifierFormulaire));
 installerValidationChamps(["materiel","quantite","debut","debut-heure","fin","fin-heure","details"]);
+function actualiserMinimumDate(){} // Fonction conservée pour l'appel historique en fin de script.
 installerCalendriersDemande();
 function installerCalendriersDemande(){
  const nomsMois=["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"],jours=["L","M","M","J","V","S","D"];
