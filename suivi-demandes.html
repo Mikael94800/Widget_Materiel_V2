@@ -16,7 +16,7 @@ input,select,textarea{width:100%;border:1px solid var(--border);border-radius:7p
 input[type="datetime-local"]::-webkit-calendar-picker-indicator{position:absolute;inset:0;width:auto;height:auto;opacity:0;cursor:pointer}
 button{border:0;border-radius:7px;padding:10px 14px;cursor:pointer;font-weight:bold}button:disabled{opacity:.45;cursor:not-allowed}.primary{background:var(--blue);color:white}.success{background:#d8f3e5;color:#126b47}.danger{background:#fde3e3;color:#a72b35}.neutral{background:#edf2ff;color:#2945a6}
 .info,.error,.ok{padding:12px;border-radius:8px;margin:10px 0;font-size:14px}.info{background:#edf2ff}.error{background:#fde8e8;color:#a72b35}.ok{background:#e2f5eb;color:#126b47}.small{font-size:12px;color:var(--muted)}
-.request{border:1px solid var(--border);padding:15px;border-radius:10px;margin:10px 0;background:white}.history-panel{margin-top:28px}.history-panel details>summary{cursor:pointer;font-weight:bold;font-size:20px;list-style-position:inside}.history-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:16px 0}.history-controls label{min-width:145px}.history-controls select{max-width:320px}.request-header{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:10px}.request-materials{font-size:19px;font-weight:700;line-height:1.35}.request-status{flex:0 0 auto;min-width:155px;text-align:center;padding:12px 16px;border-radius:9px;background:#edf2ff;color:#2945a6;font-weight:700;font-size:16px}.request-meta{margin:5px 0;font-size:14px}.request-reference{margin-top:8px;font-size:11px;color:var(--muted)}.request-line{border-top:1px solid var(--border);padding-top:10px;margin-top:10px}.actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center}.cart-line{display:grid;grid-template-columns:minmax(0,1fr) 100px auto;gap:9px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}.empty{color:var(--muted);font-size:14px;padding:8px 0}
+.request{border:1px solid var(--border);padding:15px;border-radius:10px;margin:10px 0;background:white}.history-panel{margin-top:28px}.history-panel details>summary{cursor:pointer;font-weight:bold;font-size:20px;list-style-position:inside}.history-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:16px 0}.history-controls label{min-width:145px}.history-controls select{max-width:320px}.request-header{display:flex;justify-content:flex-start;gap:10px;align-items:center;margin-bottom:10px}.request-materials{font-size:19px;font-weight:700;line-height:1.35}.request-status{display:inline-flex;align-items:center;width:fit-content;padding:4px 9px;border-radius:6px;background:#f1f3f6;color:#596579;font-weight:600;font-size:11px;letter-spacing:.01em}.request-meta{margin:5px 0;font-size:14px}.request-reference{margin-top:8px;font-size:11px;color:var(--muted)}.request-line{border-top:1px solid var(--border);padding:12px 0 2px;margin-top:10px}.request-line-heading{display:flex;justify-content:space-between;align-items:center;gap:12px}.request-line-name{font-size:15px;font-weight:650;line-height:1.4}.line-status{display:inline-flex;align-items:center;flex:0 0 auto;border-radius:999px;padding:5px 11px;font-size:12px;font-weight:750;white-space:nowrap}.line-status-attente{background:#fff0cc;color:#875600}.line-status-validee{background:#d8f3e5;color:#126b47}.line-status-refusee{background:#fde3e3;color:#a72b35}.line-status-pretee{background:#dce8ff;color:#2945a6}.line-status-restituee{background:#ccebdd;color:#145b43}.line-status-annulee{background:#edf0f4;color:#596579}.line-status-inconnue{background:#edf0f4;color:#596579}.actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center}.cart-line{display:grid;grid-template-columns:minmax(0,1fr) 100px auto;gap:9px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}.empty{color:var(--muted);font-size:14px;padding:8px 0}
 @media(max-width:650px){body{padding:12px}.page-header{align-items:flex-start;flex-direction:column}.page-header #identity{margin:0;max-width:100%;text-align:left}.grid{grid-template-columns:1fr}.cart-line{grid-template-columns:1fr 85px}.cart-line button{grid-column:1/-1}.request-header{align-items:stretch;flex-direction:column}.request-status{min-width:0;text-align:left}}
 </style></head>
 <body>
@@ -57,7 +57,7 @@ button{border:0;border-radius:7px;padding:10px 14px;cursor:pointer;font-weight:b
 </section>
 
 <script>
-const VERSION_WIDGET="1.0.0";
+const VERSION_WIDGET="1.1.0";
 const TABLE_MATERIEL="MATERIEL",TABLE_UTILISATEURS="Utilisateurs",TABLE_IDENTIFICATION="Identification",TABLE_DEMANDES="DEMANDES",TABLE_SUIVI="SUIVI_DEMANDES";
 const STATUTS_RESERVANTS=["En attente","Validée","Prêtée"];
 let materiels=[],utilisateurs=[],demandes=[],lignes=[],currentUserRecord=null,panier=[];
@@ -257,31 +257,31 @@ async function envoyerDemande(){
 function creerBlocTitre(titre,sous=""){const b=document.createElement("div");b.className="request";const h=document.createElement("div");h.className="request-header";const s=document.createElement("strong");s.textContent=titre;h.appendChild(s);if(sous){const small=document.createElement("span");small.className="small";small.textContent=sous;h.appendChild(small);}b.appendChild(h);return b;}
 function ajouterTexte(p,t,cl=""){const x=document.createElement("p");x.style.margin="5px 0";if(cl)x.className=cl;x.textContent=t;p.appendChild(x);return x;}
 function ajouterBouton(p,t,cl,fn){const b=document.createElement("button");b.textContent=t;b.className=cl;b.onclick=fn;p.appendChild(b);return b;}
+function creerBadgeStatutLigne(statut){
+  const badge=document.createElement("span");
+  const classes={
+    "En attente":"line-status-attente",
+    "Validée":"line-status-validee",
+    "Refusée":"line-status-refusee",
+    "Prêtée":"line-status-pretee",
+    "Restituée":"line-status-restituee",
+    "Annulée":"line-status-annulee"
+  };
+  badge.className="line-status "+(classes[statut]||"line-status-inconnue");
+  badge.textContent=statut||"Statut non renseigné";
+  return badge;
+}
+
 function creerCarteDemande(d,items,historique=false){
   const card=document.createElement("article");
   card.className="request";
   const header=document.createElement("div");
   header.className="request-header";
 
-  const noms=items.map(l=>{
-    const m=materielParId(l.Materiel);
-    return `${l.Quantite||0} ${m?m.Materiel:"Matériel inconnu"}`;
-  });
-  const materials=document.createElement("div");
-  materials.className="request-materials";
-  materials.textContent=noms.length?noms.join(" · "):"Aucun matériel renseigné";
-
   const status=document.createElement("div");
   status.className="request-status";
-  // L'encart reflète les statuts des lignes de SUIVI_DEMANDES,
-  // et non le statut global de la demande parente.
-  const statutsLignes=[...new Set(items.map(l=>String(l.StatutDemande||"").trim()).filter(Boolean))];
-  status.textContent=statutsLignes.length===0
-    ?"Statut non renseigné"
-    :statutsLignes.length===1
-      ?statutsLignes[0]
-      :statutsLignes.join(" / ");
-  header.append(materials,status);
+  status.textContent=d.StatutGlobal||"Statut global non renseigné";
+  header.appendChild(status);
   card.appendChild(header);
 
   ajouterTexte(card,`Période de prêt : du ${afficherDate(d.DebutPret)} au ${afficherDate(d.FinPret)}`,"request-meta");
@@ -292,7 +292,13 @@ function creerCarteDemande(d,items,historique=false){
     const sub=document.createElement("div");
     sub.className="request-line";
     const m=materielParId(l.Materiel);
-    ajouterTexte(sub,`${l.Quantite||0} ${m?m.Materiel:"Matériel inconnu"} — ${l.StatutDemande||"Statut en attente de mise à jour"}`);
+    const lineHeading=document.createElement("div");
+    lineHeading.className="request-line-heading";
+    const lineName=document.createElement("div");
+    lineName.className="request-line-name";
+    lineName.textContent=`${l.Quantite||0} × ${m?m.Materiel:"Matériel inconnu"}`;
+    lineHeading.append(lineName,creerBadgeStatutLigne(l.StatutDemande));
+    sub.appendChild(lineHeading);
 
     if(l.ObservationsRetourPreteur)ajouterTexte(sub,`Observation du prêteur : ${l.ObservationsRetourPreteur}`,"small");
     if(l.StatutDemande==="Annulée"){
