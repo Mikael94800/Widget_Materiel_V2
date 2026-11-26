@@ -140,6 +140,7 @@ function boiteDialogue(message,type="confirmation"){
 }
 function boiteConfirmation(message){return boiteDialogue(message,"confirmation");}
 function boiteSaisie(message){return boiteDialogue(message,"saisie");}
+function boiteInformation(message){boiteDialogue(message,"information");}
 
 
 async function identifierUtilisateur(){
@@ -527,19 +528,19 @@ function afficherSuppressionsATraiter(){
   });
 }
 async function modifierStatutLigne(l,statut,extra={}){
-  if(!estReferentDeLigne(l)){alert("Vous n'êtes pas le référent compétent pour ce matériel.");return;}
+  if(!estReferentDeLigne(l)){boiteInformation("Vous n'êtes pas le référent compétent pour ce matériel.");return;}
   try{await grist.docApi.applyUserActions([["UpdateRecord",TABLE_SUIVI,l.id,{StatutDemande:statut,...extra}]]);await chargerDonnees();}
-  catch(e){alert("Modification refusée par Grist. Vérifiez les permissions de StatutDemande, DateRemise et DateRestitution.\n\n"+(e.message||e));}
+  catch(e){boiteInformation("Modification refusée par Grist. Vérifiez les permissions de StatutDemande, DateRemise et DateRestitution.\n\n"+(e.message||e));}
 }
 async function mettreAJourLigne(id,fields){
   const l=lignes.find(x=>Number(x.id)===Number(id));if(!l)return;
   const keys=Object.keys(fields);
-  if(keys.length!==1){alert("Modification non autorisée.");return;}
-  if(keys[0]==="ObservationRetourDemandeur"&&!estDemandeurDeLigne(l)){alert("Seul le demandeur peut modifier son observation.");return;}
-  if(keys[0]==="ObservationsRetourPreteur"&&!estReferentDeLigne(l)){alert("Seul le référent compétent peut modifier cette observation.");return;}
-  if(!["ObservationRetourDemandeur","ObservationsRetourPreteur"].includes(keys[0])){alert("Modification non autorisée.");return;}
+  if(keys.length!==1){boiteInformation("Modification non autorisée.");return;}
+  if(keys[0]==="ObservationRetourDemandeur"&&!estDemandeurDeLigne(l)){boiteInformation("Seul le demandeur peut modifier son observation.");return;}
+  if(keys[0]==="ObservationsRetourPreteur"&&!estReferentDeLigne(l)){boiteInformation("Seul le référent compétent peut modifier cette observation.");return;}
+  if(!["ObservationRetourDemandeur","ObservationsRetourPreteur"].includes(keys[0])){boiteInformation("Modification non autorisée.");return;}
   try{await grist.docApi.applyUserActions([["UpdateRecord",TABLE_SUIVI,id,fields]]);await chargerDonnees();}
-  catch(e){alert("Modification refusée par Grist.\n\n"+(e.message||e));await chargerDonnees();}
+  catch(e){boiteInformation("Modification refusée par Grist.\n\n"+(e.message||e));await chargerDonnees();}
 }
 async function annulerLigne(l){
   // L'annulation est réservée au demandeur de la demande.
@@ -547,13 +548,13 @@ async function annulerLigne(l){
 
   if(!demande || !currentUserRecord ||
      Number(demande.Demandeur)!==Number(currentUserRecord.id)){
-    alert("Seul le demandeur peut annuler cette ligne.");
+    boiteInformation("Seul le demandeur peut annuler cette ligne.");
     return;
   }
 
   // Une annulation est possible uniquement avant la remise.
   if(!["En attente","Validée"].includes(l.StatutDemande)){
-    alert("Cette ligne ne peut plus être annulée. Si le matériel a été remis, il doit suivre le circuit normal jusqu'à sa restitution.");
+    boiteInformation("Cette ligne ne peut plus être annulée. Si le matériel a été remis, il doit suivre le circuit normal jusqu'à sa restitution.");
     return;
   }
 
@@ -563,7 +564,7 @@ async function annulerLigne(l){
   if(motif===null)return;
 
   if(!motif.trim()){
-    alert("Le motif de l'annulation est obligatoire.");
+    boiteInformation("Le motif de l'annulation est obligatoire.");
     return;
   }
 
@@ -586,40 +587,40 @@ async function annulerLigne(l){
 
     await chargerDonnees();
 
-    alert("L'annulation a bien été enregistrée.");
+    boiteInformation("L'annulation a bien été enregistrée.");
 
   }catch(e){
-    alert(
+    boiteInformation(
       "Annulation refusée par Grist.\n\n"+
       (e.message||e)
     );
   }
 }
 async function demanderSuppression(l){
-  if(!estDemandeurDeLigne(l)){alert("Seul le demandeur peut demander la suppression de sa ligne.");return;}
-  if(l.SuppressionDemandee===true){alert("Une demande de suppression est déjà en attente.");return;}
+  if(!estDemandeurDeLigne(l)){boiteInformation("Seul le demandeur peut demander la suppression de sa ligne.");return;}
+  if(l.SuppressionDemandee===true){boiteInformation("Une demande de suppression est déjà en attente.");return;}
   if(!await boiteConfirmation("Transmettre une demande de suppression au référent du matériel ?"))return;
   const fields={SuppressionDemandee:true,DateDemandeSuppression:Math.floor(Date.now()/1000),AuteurDemandeSuppression:currentUserRecord.id};
   try{await grist.docApi.applyUserActions([["UpdateRecord",TABLE_SUIVI,l.id,fields]]);await chargerDonnees();}
-  catch(e){alert("Demande non enregistrée. Vérifiez les permissions de SuppressionDemandee, DateDemandeSuppression et AuteurDemandeSuppression.\n\n"+(e.message||e));}
+  catch(e){boiteInformation("Demande non enregistrée. Vérifiez les permissions de SuppressionDemandee, DateDemandeSuppression et AuteurDemandeSuppression.\n\n"+(e.message||e));}
 }
 async function supprimerDirectement(l){
-  if(!estReferentDeLigne(l)){alert("Seul le référent compétent peut supprimer directement cette ligne.");return;}
+  if(!estReferentDeLigne(l)){boiteInformation("Seul le référent compétent peut supprimer directement cette ligne.");return;}
   if(!await boiteConfirmation("Supprimer définitivement cette ligne de suivi ? Cette opération est irréversible."))return;
   try{await grist.docApi.applyUserActions([["RemoveRecord",TABLE_SUIVI,l.id]]);await chargerDonnees();}
-  catch(e){alert("Suppression refusée par Grist.\n\n"+(e.message||e));}
+  catch(e){boiteInformation("Suppression refusée par Grist.\n\n"+(e.message||e));}
 }
 async function accepterSuppression(l){
-  if(!estReferentDeLigne(l)||l.SuppressionDemandee!==true){alert("Vous ne pouvez pas traiter cette demande.");return;}
+  if(!estReferentDeLigne(l)||l.SuppressionDemandee!==true){boiteInformation("Vous ne pouvez pas traiter cette demande.");return;}
   if(!await boiteConfirmation("Accepter et supprimer définitivement cette ligne ?"))return;
   try{await grist.docApi.applyUserActions([["RemoveRecord",TABLE_SUIVI,l.id]]);await chargerDonnees();}
-  catch(e){alert("Suppression refusée par Grist.\n\n"+(e.message||e));}
+  catch(e){boiteInformation("Suppression refusée par Grist.\n\n"+(e.message||e));}
 }
 async function refuserSuppression(l){
-  if(!estReferentDeLigne(l)||l.SuppressionDemandee!==true){alert("Vous ne pouvez pas traiter cette demande.");return;}
+  if(!estReferentDeLigne(l)||l.SuppressionDemandee!==true){boiteInformation("Vous ne pouvez pas traiter cette demande.");return;}
   if(!await boiteConfirmation("Refuser cette demande de suppression ?"))return;
   try{await grist.docApi.applyUserActions([["UpdateRecord",TABLE_SUIVI,l.id,{SuppressionDemandee:false}]]);await chargerDonnees();}
-  catch(e){alert("Refus impossible.\n\n"+(e.message||e));}
+  catch(e){boiteInformation("Refus impossible.\n\n"+(e.message||e));}
 }
 function actualiserMinimumDate(){const n=new Date(),local=new Date(n.getTime()-n.getTimezoneOffset()*60000).toISOString().slice(0,16);$("debut").min=local;$("fin").min=local;}
 ["debut","fin"].forEach(id=>{
