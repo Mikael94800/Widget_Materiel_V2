@@ -313,14 +313,7 @@ function afficherMesDemandes(){
         );
       }
 
-      if(estReferentDeLigne(l)){
-        ajouterBouton(
-          actions,
-          "Supprimer cette ligne",
-          "danger",
-          ()=>supprimerDirectement(l)
-        );
-      }else if(l.SuppressionDemandee===true){
+      if(l.SuppressionDemandee===true){
         ajouterTexte(
           sub,
           `Demande de suppression transmise le ${afficherDate(l.DateDemandeSuppression)} — en attente.`,
