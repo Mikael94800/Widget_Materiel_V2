@@ -36,6 +36,15 @@ button{border:0;border-radius:7px;padding:10px 14px;cursor:pointer;font-weight:b
 .history-detail-meta{font-size:12px;color:var(--muted);margin-top:4px}
 
 @media(max-width:650px){body{padding:12px}.grid{grid-template-columns:1fr}.cart-line{grid-template-columns:1fr 85px}.cart-line button{grid-column:1/-1}}
+/* Formulaire de réservation : mêmes dimensions et typographie que le widget de suivi */
+.reservation-form .grid{grid-template-columns:minmax(130px,170px) minmax(220px,270px);gap:14px;align-items:start}
+.reservation-form .field{gap:7px;margin-bottom:15px}
+.reservation-form label{font-size:15px}
+#reservation-materiel{max-width:520px}
+#reservation-quantite{max-width:130px}
+#reservation-debut,#reservation-fin{max-width:270px;cursor:pointer;position:relative}
+#reservation-debut::-webkit-calendar-picker-indicator,#reservation-fin::-webkit-calendar-picker-indicator{position:absolute;inset:0;width:auto;height:auto;opacity:0;cursor:pointer}
+@media(max-width:650px){.reservation-form .grid{grid-template-columns:1fr}}
 
 .app-dialog-overlay{position:fixed;inset:0;z-index:10000;background:rgba(18,28,45,.48);display:flex;align-items:center;justify-content:center;padding:18px}
 .app-dialog{width:min(460px,100%);background:#fff;border:1px solid #dce2eb;border-radius:12px;box-shadow:0 18px 55px rgba(15,23,42,.24);overflow:hidden;color:#202b3c}
@@ -55,14 +64,14 @@ button{border:0;border-radius:7px;padding:10px 14px;cursor:pointer;font-weight:b
 </div>
 
 
-<section class="panel">
+<section class="panel reservation-form">
 <h3>Nouvelle réservation personnelle</h3>
 <p class="small">Réservations pour votre propre utilisation du matériel de votre service. Elles sont enregistrées comme validées automatiquement.</p>
-<div class="field"><label for="reservation-materiel">Matériel</label><select id="reservation-materiel"><option value="">Chargement…</option></select></div>
+<div class="field"><label for="reservation-materiel">Matériel à ajouter</label><select id="reservation-materiel"><option value="">Chargement…</option></select></div>
 <div class="grid">
 <div class="field"><label for="reservation-quantite">Quantité</label><input id="reservation-quantite" type="number" min="1" step="1" value="1"></div>
-<div class="field"><label for="reservation-debut">Début</label><input id="reservation-debut" type="datetime-local"></div>
-<div class="field"><label for="reservation-fin">Fin</label><input id="reservation-fin" type="datetime-local"></div>
+<div class="field"><label for="reservation-debut">Début du prêt</label><input id="reservation-debut" type="datetime-local"></div>
+<div class="field"><label for="reservation-fin">Fin du prêt</label><input id="reservation-fin" type="datetime-local"></div>
 </div>
 <div class="field"><label for="reservation-details">Motif / utilisation prévue</label><textarea id="reservation-details" placeholder="Précisez l'utilisation prévue…"></textarea></div>
 <div id="reservation-disponibilite" class="info">Sélectionnez un matériel et une période.</div>
@@ -776,6 +785,14 @@ async function annulerLigne(l){
 
 function actualiserMinimumDate(){const n=new Date(),local=new Date(n.getTime()-n.getTimezoneOffset()*60000).toISOString().slice(0,16);$("debut").min=local;$("fin").min=local;}
 ["reservation-materiel","reservation-quantite","reservation-debut","reservation-fin"].forEach(id=>{ $(id).addEventListener("change",verifierReservation);$(id).addEventListener("input",verifierReservation); });
+["reservation-debut","reservation-fin"].forEach(id=>{
+  const champ=$(id);
+  champ.addEventListener("click",()=>{
+    if(typeof champ.showPicker==="function"){
+      try{champ.showPicker();}catch(_){}
+    }
+  });
+});
 installerValidationChamps(["reservation-materiel","reservation-quantite","reservation-debut","reservation-fin","reservation-details"]);
 $("reservation-enregistrer").addEventListener("click",creerReservationReferent);
 $("calendrier-precedent").addEventListener("click",()=>decalageCalendrier(-1));
