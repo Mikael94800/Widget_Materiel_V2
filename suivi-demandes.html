@@ -12,7 +12,8 @@ h2{margin:0;font-size:21px}h3{font-size:20px;margin:0 0 16px}.panel{background:#
 .page-header{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:18px}.page-header #identity{margin:0 0 0 auto;max-width:min(620px,65%);text-align:right;padding:9px 13px;font-size:13px}
 .grid{display:grid;grid-template-columns:minmax(130px,170px) minmax(220px,270px);gap:14px;align-items:start}.field{display:flex;flex-direction:column;gap:7px;margin-bottom:15px}label{font-size:15px;font-weight:bold}
 input,select,textarea{width:100%;border:1px solid var(--border);border-radius:7px;padding:11px;font:inherit;background:#fff}textarea{min-height:70px;resize:vertical}
-#materiel{max-width:520px}#quantite{max-width:130px}#debut,#fin{max-width:270px;cursor:pointer}
+#materiel{max-width:520px}#quantite{max-width:130px}#debut,#fin{max-width:270px;cursor:pointer;position:relative}
+input[type="datetime-local"]::-webkit-calendar-picker-indicator{position:absolute;inset:0;width:auto;height:auto;opacity:0;cursor:pointer}
 button{border:0;border-radius:7px;padding:10px 14px;cursor:pointer;font-weight:bold}button:disabled{opacity:.45;cursor:not-allowed}.primary{background:var(--blue);color:white}.success{background:#d8f3e5;color:#126b47}.danger{background:#fde3e3;color:#a72b35}.neutral{background:#edf2ff;color:#2945a6}
 .info,.error,.ok{padding:12px;border-radius:8px;margin:10px 0;font-size:14px}.info{background:#edf2ff}.error{background:#fde8e8;color:#a72b35}.ok{background:#e2f5eb;color:#126b47}.small{font-size:12px;color:var(--muted)}
 .request{border:1px solid var(--border);padding:15px;border-radius:10px;margin:10px 0;background:white}.history-panel{margin-top:28px}.history-panel details>summary{cursor:pointer;font-weight:bold;font-size:20px;list-style-position:inside}.history-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:16px 0}.history-controls label{min-width:145px}.history-controls select{max-width:320px}.request-header{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:10px}.request-materials{font-size:19px;font-weight:700;line-height:1.35}.request-status{flex:0 0 auto;min-width:155px;text-align:center;padding:12px 16px;border-radius:9px;background:#edf2ff;color:#2945a6;font-weight:700;font-size:16px}.request-meta{margin:5px 0;font-size:14px}.request-reference{margin-top:8px;font-size:11px;color:var(--muted)}.request-line{border-top:1px solid var(--border);padding-top:10px;margin-top:10px}.actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center}.cart-line{display:grid;grid-template-columns:minmax(0,1fr) 100px auto;gap:9px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}.empty{color:var(--muted);font-size:14px;padding:8px 0}
@@ -206,8 +207,40 @@ async function envoyerDemande(){
     parentId=extraireIdAjoute(result);
     if(parentId==null){const refreshed=rowsFromGrist(await grist.docApi.fetchTable(TABLE_DEMANDES));const row=refreshed.find(d=>d.IdDemande===fields.IdDemande);if(row)parentId=row.id;}
     if(parentId==null)throw Error("La demande globale a été créée mais son identifiant n'a pas pu être retrouvé. Vérifiez DEMANDES avant de recommencer.");
-    for(const x of panier)await grist.docApi.applyUserActions([["AddRecord",TABLE_SUIVI,null,{Demande:parentId,Materiel:x.materielId,Quantite:x.quantite,StatutDemande:"En attente"}]]);
-    msg.className="ok";msg.textContent=`Demande ${fields.IdDemande} enregistrée.`;panier=[];$("details").value="";$("debut").value="";$("fin").value="";$("materiel").value="";$("quantite").value=1;await chargerDonnees();
+    // Créer toutes les lignes de matériel dans une seule transaction Grist.
+    const actionsLignes=panier.map(x=>[
+      "AddRecord",
+      TABLE_SUIVI,
+      null,
+      {
+        Demande:Number(parentId),
+        Materiel:Number(x.materielId),
+        Quantite:Number(x.quantite),
+        StatutDemande:"En attente"
+      }
+    ]);
+    await grist.docApi.applyUserActions(actionsLignes);
+
+    // Relire la table pour confirmer que chaque ligne a réellement été créée.
+    const lignesVerifiees=rowsFromGrist(await grist.docApi.fetchTable(TABLE_SUIVI));
+    const lignesManquantes=panier.filter(x=>!lignesVerifiees.some(l=>
+      Number(l.Demande)===Number(parentId)&&
+      Number(l.Materiel)===Number(x.materielId)&&
+      Number(l.Quantite)===Number(x.quantite)&&
+      l.StatutDemande==="En attente"
+    ));
+    if(lignesManquantes.length){
+      throw Error(
+        "La demande principale a été créée dans DEMANDES, mais Grist ne renvoie pas toutes les lignes attendues dans SUIVI_DEMANDES. " +
+        "Lignes manquantes : "+lignesManquantes.map(x=>{
+          const m=materielParId(x.materielId);
+          return (m?m.Materiel:"matériel "+x.materielId)+" (quantité "+x.quantite+")";
+        }).join(", ")+
+        ". Vérifiez les droits d'ajout et de lecture de la table SUIVI_DEMANDES."
+      );
+    }
+
+    msg.className="ok";msg.textContent=`Demande ${fields.IdDemande} enregistrée avec ${panier.length} ligne(s) de matériel.`;panier=[];$("details").value="";$("debut").value="";$("fin").value="";$("materiel").value="";$("quantite").value=1;await chargerDonnees();
   }catch(e){msg.className="error";msg.textContent="Enregistrement interrompu : "+(e.message||e)+(parentId!=null?" Vérifiez les lignes de SUIVI_DEMANDES avant de relancer.":"");btn.disabled=false;}
 }
 function creerBlocTitre(titre,sous=""){const b=document.createElement("div");b.className="request";const h=document.createElement("div");h.className="request-header";const s=document.createElement("strong");s.textContent=titre;h.appendChild(s);if(sous){const small=document.createElement("span");small.className="small";small.textContent=sous;h.appendChild(small);}b.appendChild(h);return b;}
@@ -453,11 +486,13 @@ async function refuserSuppression(l){
 function actualiserMinimumDate(){const n=new Date(),local=new Date(n.getTime()-n.getTimezoneOffset()*60000).toISOString().slice(0,16);$("debut").min=local;$("fin").min=local;}
 ["debut","fin"].forEach(id=>{
   const input=$(id);
-  input.addEventListener("click",()=>{
+  const ouvrirCalendrier=()=>{
     if(typeof input.showPicker==="function"){
       try{input.showPicker();}catch(_){}
     }
-  });
+  };
+  input.addEventListener("click",ouvrirCalendrier);
+  input.addEventListener("pointerdown",ouvrirCalendrier);
 });
 ["materiel","quantite","debut","fin"].forEach(id=>{ $(id).addEventListener("change",()=>{actualiserMinimumDate();verifierFormulaire();});$(id).addEventListener("input",()=>{actualiserMinimumDate();verifierFormulaire();}); });
 $("ajouter").addEventListener("click",ajouterAuPanier);$("envoyer").addEventListener("click",envoyerDemande);
