@@ -1,0 +1,593 @@
+
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gestion des prêts de matériel</title>
+<script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+<style>
+:root{--blue:#3459dc;--bg:#f5f7fb;--border:#dce2ec;--text:#26334a;--green:#16865a;--red:#c43d43;--muted:#68758a}
+*{box-sizing:border-box}body{margin:0;padding:22px;background:var(--bg);color:var(--text);font-family:Arial,sans-serif}
+h2{margin:0 0 18px;font-size:21px}h3{font-size:16px;margin:0 0 14px}.panel{background:#fff;padding:20px;margin-bottom:20px;border-radius:12px;border:1px solid var(--border)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.field{display:flex;flex-direction:column;gap:6px;margin-bottom:13px}label{font-size:13px;font-weight:bold}
+input,select,textarea{width:100%;border:1px solid var(--border);border-radius:7px;padding:11px;font:inherit;background:#fff}textarea{min-height:70px;resize:vertical}
+button{border:0;border-radius:7px;padding:10px 14px;cursor:pointer;font-weight:bold}button:disabled{opacity:.45;cursor:not-allowed}.primary{background:var(--blue);color:white}.success{background:#d8f3e5;color:#126b47}.danger{background:#fde3e3;color:#a72b35}.neutral{background:#edf2ff;color:#2945a6}
+.info,.error,.ok{padding:12px;border-radius:8px;margin:10px 0;font-size:14px}.info{background:#edf2ff}.error{background:#fde8e8;color:#a72b35}.ok{background:#e2f5eb;color:#126b47}.small{font-size:12px;color:var(--muted)}
+.request{border:1px solid var(--border);padding:13px;border-radius:8px;margin:10px 0;background:white}.history-panel{margin-top:28px}.history-panel details>summary{cursor:pointer;font-weight:bold;font-size:16px;list-style-position:inside}.history-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:16px 0}.history-controls label{min-width:145px}.history-controls select{max-width:320px}.request-header{display:flex;justify-content:space-between;gap:12px;margin-bottom:6px}.actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center}.cart-line{display:grid;grid-template-columns:minmax(0,1fr) 100px auto;gap:9px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}.empty{color:var(--muted);font-size:14px;padding:8px 0}
+@media(max-width:650px){body{padding:12px}.grid{grid-template-columns:1fr}.cart-line{grid-template-columns:1fr 85px}.cart-line button{grid-column:1/-1}}
+</style></head>
+<body>
+<div class="page-header">
+<div>
+<h2>Gestion des prêts de matériel</h2>
+<div id="version-widget" class="small"></div>
+</div>
+</div>
+<div id="identity" class="info">Connexion à Grist et identification de votre profil…</div>
+<section class="panel">
+<h3>Nouvelle demande de prêt</h3>
+<div class="field"><label for="materiel">Matériel à ajouter</label><select id="materiel"><option value="">Chargement du catalogue…</option></select></div>
+<div class="grid">
+<div class="field"><label for="quantite">Quantité</label><input id="quantite" type="number" min="1" step="1" value="1"></div>
+<div class="field"><label for="debut">Début du prêt</label><input id="debut" type="datetime-local"></div>
+<div class="field"><label for="fin">Fin du prêt</label><input id="fin" type="datetime-local"></div>
+</div>
+<div class="actions"><button id="ajouter" class="neutral" type="button" disabled>Ajouter le matériel à la demande</button></div>
+<div id="disponibilite" class="info">Sélectionnez un matériel et une période.</div>
+<h3>Matériels dans cette demande</h3><div id="panier" class="empty">Aucun matériel ajouté.</div>
+<div class="field"><label for="details">Motif de la demande (commun à tous les matériels)</label><textarea id="details" placeholder="Précisez l'utilisation prévue…"></textarea></div>
+<div id="message"></div><button id="envoyer" class="primary" disabled>Envoyer la demande complète</button>
+<p class="small">Votre identité et votre service sont récupérés depuis votre profil Grist. Chaque matériel est suivi séparément.</p>
+</section>
+<section class="panel"><h3>Mes demandes en cours</h3><div id="mes-demandes">Chargement…</div></section>
+<section class="panel"><h3>Demandes à traiter par mon service prêteur</h3><div id="a-traiter">Chargement…</div></section>
+<section class="panel"><h3>Prêts en cours et restitutions</h3><div id="prets-en-cours">Chargement…</div></section>
+<section class="panel"><h3>Demandes de suppression à examiner</h3><div id="suppressions-a-traiter">Chargement…</div></section>
+<section class="panel history-panel">
+  <details id="historique-conteneur">
+    <summary>Historique des demandes</summary>
+    <div class="history-controls">
+      <label for="filtre-historique">Rechercher par statut</label>
+      <select id="filtre-historique">
+        <option value="">Toutes les demandes archivées</option>
+        <option value="Validée">Validées</option>
+        <option value="Annulée">Annulées</option>
+        <option value="Refusée">Refusées</option>
+        <option value="Clôturée">Clôturées</option>
+      </select>
+    </div>
+    <div id="historique-demandes">Chargement…</div>
+  </details>
+</section>
+
+<script>
+const VERSION_WIDGET="1.0.0";
+const TABLE_MATERIEL="MATERIEL",TABLE_UTILISATEURS="Utilisateurs",TABLE_IDENTIFICATION="Identification",TABLE_DEMANDES="DEMANDES",TABLE_SUIVI="SUIVI_DEMANDES";
+const STATUTS_RESERVANTS=["En attente","Validée","Prêtée"];
+let materiels=[],utilisateurs=[],demandes=[],lignes=[],currentUserRecord=null,panier=[];
+const $=id=>document.getElementById(id);
+
+async function identifierUtilisateur(){
+  currentUserRecord=null;
+
+  // L'identité est fournie par la table Identification, filtrée par les permissions Grist.
+  const raw=await grist.docApi.fetchTable(TABLE_IDENTIFICATION);
+  const identites=rowsFromGrist(raw);
+
+  if(identites.length!==1){
+    throw new Error(
+      identites.length===0
+        ?"Aucune ligne visible dans la table Identification. Vérifiez les permissions avancées de cette table."
+        :"Plusieurs lignes visibles dans la table Identification. Chaque utilisateur doit voir exactement une seule ligne."
+    );
+  }
+
+  const email=String(identites[0].Email||"").trim().toLowerCase();
+  if(!email){
+    throw new Error("La colonne Email de la table Identification est vide.");
+  }
+
+  currentUserRecord=utilisateurs.find(u=>
+    String(u.Email||"").trim().toLowerCase()===email
+  )||null;
+
+  if(!currentUserRecord){
+    throw new Error("Aucun profil correspondant à "+email+" dans la table Utilisateurs. Vérifiez les adresses électroniques des deux tables.");
+  }
+}
+function rowsFromGrist(data){
+  if(!data||!Array.isArray(data.id))return [];
+  return data.id.map((id,i)=>{const r={id};for(const k of Object.keys(data))if(k!=="id")r[k]=data[k][i];return r;});
+}
+// Grist peut encoder une ReferenceList sous la forme ["L", id1, id2, ...].
+function normaliserListe(v){
+  if(v==null||v==="")return [];
+  if(Array.isArray(v))return v[0]==="L"?v.slice(1):v;
+  if(typeof v==="string"){try{const p=JSON.parse(v);if(Array.isArray(p))return p[0]==="L"?p.slice(1):p;}catch(_){}return [v];}
+  return [v];
+}
+function contientReference(liste,id){return normaliserListe(liste).some(v=>Number(v)===Number(id));}
+function dateSecondes(v){return new Date(v).getTime()/1000;}
+function afficherDate(v){return v==null||v===""?"Non renseigné":new Date(Number(v)*1000).toLocaleString("fr-FR");}
+function nomUtilisateur(id){const u=utilisateurs.find(x=>Number(x.id)===Number(id));return u?(u.NomComplet||u.Email||`Agent n° ${id}`):(id?`Agent n° ${id}`:"Inconnu");}
+function serviceUtilisateur(){return currentUserRecord?currentUserRecord.Service:null;}
+function materielParId(id){return materiels.find(m=>Number(m.id)===Number(id));}
+function demandeParId(id){return demandes.find(d=>Number(d.id)===Number(id));}
+function lignesDemande(id){return lignes.filter(l=>Number(l.Demande)===Number(id));}
+function materielAutorisePourUtilisateur(m){return Boolean(serviceUtilisateur())&&normaliserListe(m.ServicesDestinataires).includes(serviceUtilisateur());}
+
+// Référent fonctionnel = booléen actif + affectation du matériel + service prêteur.
+// ServicesDestinataires n'intervient PAS dans le contrôle du périmètre du référent.
+function estReferentDeLigne(l){
+  if(!currentUserRecord||currentUserRecord.ReferentMateriel!==true)return false;
+  const m=materielParId(l.Materiel);
+  const servicePreteur=l.ServicePreteur||(m&&m.ServicePreteur);
+  return contientReference(l.ReferentMateriel,currentUserRecord.id)
+    &&Boolean(servicePreteur)&&servicePreteur===serviceUtilisateur();
+}
+function estDemandeurDeLigne(l){return Boolean(currentUserRecord)&&Number(l.Demandeur)===Number(currentUserRecord.id);}
+function chevauche(a1,a2,b1,b2){return a1<b2&&a2>b1;}
+function stockDisponible(id,debut,fin){
+  const m=materielParId(id);if(!m)return 0;
+  const reserve=lignes.filter(l=>Number(l.Materiel)===Number(id)&&STATUTS_RESERVANTS.includes(l.StatutDemande)
+    &&l.DebutPret!=null&&l.FinPret!=null&&chevauche(Number(l.DebutPret),Number(l.FinPret),debut,fin))
+    .reduce((s,l)=>s+Number(l.Quantite||0),0);
+  return Number(m.Quantite||0)-reserve;
+}
+async function chargerDonnees(){
+  const [m,u,d,s]=await Promise.all([grist.docApi.fetchTable(TABLE_MATERIEL),grist.docApi.fetchTable(TABLE_UTILISATEURS),grist.docApi.fetchTable(TABLE_DEMANDES),grist.docApi.fetchTable(TABLE_SUIVI)]);
+  materiels=rowsFromGrist(m);utilisateurs=rowsFromGrist(u);demandes=rowsFromGrist(d);lignes=rowsFromGrist(s);
+  // Identification sécurisée par la ligne unique rendue visible dans la table Identification.
+  await identifierUtilisateur();
+  afficherIdentite();afficherCatalogue();afficherPanier();afficherMesDemandes();afficherDemandesATraiter();afficherPretsEnCours();afficherSuppressionsATraiter();verifierFormulaire();
+}
+function afficherIdentite(){
+  $("version-widget").textContent="Widget Matériel — version "+VERSION_WIDGET;
+  if(!currentUserRecord){
+    $("identity").className="error";
+    $("identity").textContent="Identité non vérifiée. Consultez le message d'erreur de connexion ci-dessous.";
+    return;
+  }
+  $("identity").className="ok";
+  $("identity").textContent=`Connecté : ${currentUserRecord.NomComplet||currentUserRecord.Email} — Service : ${currentUserRecord.Service||"non renseigné"}`;
+}
+function afficherCatalogue(){
+  const s=$("materiel");s.innerHTML='<option value="">Choisir un matériel</option>';
+  materiels.filter(materielAutorisePourUtilisateur).forEach(m=>{const o=document.createElement("option");o.value=m.id;o.textContent=`${m.Materiel||"Matériel sans nom"} (stock total : ${m.Quantite??0})`;s.appendChild(o);});
+  if(s.options.length===1){const o=document.createElement("option");o.disabled=true;o.textContent="Aucun matériel n'est proposé à votre service.";s.appendChild(o);}
+}
+function datesFormulaire(){
+  if(!$("debut").value||!$("fin").value)return {ok:false,message:"Renseignez les dates et heures de début et de fin."};
+  const debut=dateSecondes($("debut").value),fin=dateSecondes($("fin").value);
+  if(!Number.isFinite(debut)||!Number.isFinite(fin))return {ok:false,message:"Date invalide."};
+  if(debut<Date.now()/1000)return {ok:false,message:"La date de début ne peut pas être dans le passé."};
+  if(fin<=debut)return {ok:false,message:"La fin doit être postérieure au début."};
+  return {ok:true,debut,fin};
+}
+function verifierFormulaire(){
+  const id=Number($("materiel").value),q=Number($("quantite").value),dt=datesFormulaire();$("ajouter").disabled=true;
+  if(!currentUserRecord){$("disponibilite").className="error";$("disponibilite").textContent="Profil utilisateur non identifié.";return;}
+  if(!id){$("disponibilite").className="info";$("disponibilite").textContent="Sélectionnez un matériel.";return;}
+  if(!Number.isInteger(q)||q<1){$("disponibilite").className="error";$("disponibilite").textContent="La quantité doit être un entier supérieur ou égal à 1.";return;}
+  if(!dt.ok){$("disponibilite").className="error";$("disponibilite").textContent=dt.message;return;}
+  const m=materielParId(id);if(!m||!materielAutorisePourUtilisateur(m)){$("disponibilite").className="error";$("disponibilite").textContent="Matériel non destiné à votre service.";return;}
+  const old=panier.find(x=>Number(x.materielId)===id),available=stockDisponible(id,dt.debut,dt.fin)-(old?old.quantite:0);
+  $("disponibilite").className=available>=q?"ok":"error";$("disponibilite").textContent=`Quantité estimée disponible : ${Math.max(0,available)}.`+(available<q?" Stock insuffisant.":"");$("ajouter").disabled=available<q;
+}
+function afficherPanier(){
+  const z=$("panier");z.innerHTML="";
+  if(!panier.length){z.className="empty";z.textContent="Aucun matériel ajouté."; $("envoyer").disabled=true;return;}
+  z.className="";
+  panier.forEach((x,i)=>{const m=materielParId(x.materielId),r=document.createElement("div");r.className="cart-line";
+    const n=document.createElement("div");n.textContent=`${m?m.Materiel:"Matériel inconnu"} — ${m?m.ServicePreteur:"service prêteur inconnu"}`;
+    const q=document.createElement("div");q.textContent=`Quantité : ${x.quantite}`;
+    const b=document.createElement("button");b.className="danger";b.textContent="Retirer";b.onclick=()=>{panier.splice(i,1);afficherPanier();verifierFormulaire();};r.append(n,q,b);z.appendChild(r);});
+  $("envoyer").disabled=!datesFormulaire().ok||!currentUserRecord;
+}
+function ajouterAuPanier(){
+  const id=Number($("materiel").value),q=Number($("quantite").value),dt=datesFormulaire();
+  if(!dt.ok||!Number.isInteger(q)||q<1||!id){verifierFormulaire();return;}
+  const m=materielParId(id);if(!m||!materielAutorisePourUtilisateur(m)){verifierFormulaire();return;}
+  const old=panier.find(x=>Number(x.materielId)===id),already=old?old.quantite:0,available=stockDisponible(id,dt.debut,dt.fin);
+  if(already+q>available){$("disponibilite").className="error";$("disponibilite").textContent=`Stock insuffisant : ${Math.max(0,available)} disponible(s).`;return;}
+  if(old)old.quantite+=q;else panier.push({materielId:id,quantite:q});afficherPanier();verifierFormulaire();
+}
+function extraireIdAjoute(result){
+  if(typeof result==="number")return result;
+  if(Array.isArray(result)){for(const x of result){const id=extraireIdAjoute(x);if(id!=null)return id;}}
+  if(result&&typeof result==="object"){if(typeof result.id==="number")return result.id;if(typeof result.rowId==="number")return result.rowId;}
+  return null;
+}
+function creerNumeroDemande(){const d=new Date(),s=`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}-${String(d.getHours()).padStart(2,"0")}${String(d.getMinutes()).padStart(2,"0")}${String(d.getSeconds()).padStart(2,"0")}`;return `DEM-${s}-${Math.floor(Math.random()*9000+1000)}`;}
+async function envoyerDemande(){
+  const msg=$("message"),btn=$("envoyer"),dt=datesFormulaire();msg.className="";msg.textContent="";
+  if(!currentUserRecord||!panier.length||!dt.ok||!$("details").value.trim()){msg.className="error";msg.textContent=!currentUserRecord?"Profil introuvable.":!panier.length?"Ajoutez au moins un matériel.":!dt.ok?dt.message:"Merci de préciser le motif.";return;}
+  btn.disabled=true;let parentId=null;
+  try{
+    await chargerDonnees();
+    for(const x of panier){const m=materielParId(x.materielId);if(!m||!materielAutorisePourUtilisateur(m))throw Error("Un matériel n'est plus destiné à votre service.");if(stockDisponible(x.materielId,dt.debut,dt.fin)<x.quantite)throw Error(`Stock insuffisant pour ${m.Materiel}.`);}
+    const fields={IdDemande:creerNumeroDemande(),DebutPret:dt.debut,FinPret:dt.fin,DetailsDemande:$("details").value.trim()};
+    const result=await grist.docApi.applyUserActions([["AddRecord",TABLE_DEMANDES,null,fields]]);
+    parentId=extraireIdAjoute(result);
+    if(parentId==null){const refreshed=rowsFromGrist(await grist.docApi.fetchTable(TABLE_DEMANDES));const row=refreshed.find(d=>d.IdDemande===fields.IdDemande);if(row)parentId=row.id;}
+    if(parentId==null)throw Error("La demande globale a été créée mais son identifiant n'a pas pu être retrouvé. Vérifiez DEMANDES avant de recommencer.");
+    for(const x of panier)await grist.docApi.applyUserActions([["AddRecord",TABLE_SUIVI,null,{Demande:parentId,Materiel:x.materielId,Quantite:x.quantite,StatutDemande:"En attente"}]]);
+    msg.className="ok";msg.textContent=`Demande ${fields.IdDemande} enregistrée.`;panier=[];$("details").value="";$("debut").value="";$("fin").value="";$("materiel").value="";$("quantite").value=1;await chargerDonnees();
+  }catch(e){msg.className="error";msg.textContent="Enregistrement interrompu : "+(e.message||e)+(parentId!=null?" Vérifiez les lignes de SUIVI_DEMANDES avant de relancer.":"");btn.disabled=false;}
+}
+function creerBlocTitre(titre,sous=""){const b=document.createElement("div");b.className="request";const h=document.createElement("div");h.className="request-header";const s=document.createElement("strong");s.textContent=titre;h.appendChild(s);if(sous){const small=document.createElement("span");small.className="small";small.textContent=sous;h.appendChild(small);}b.appendChild(h);return b;}
+function ajouterTexte(p,t,cl=""){const x=document.createElement("p");x.style.margin="5px 0";if(cl)x.className=cl;x.textContent=t;p.appendChild(x);return x;}
+function ajouterBouton(p,t,cl,fn){const b=document.createElement("button");b.textContent=t;b.className=cl;b.onclick=fn;p.appendChild(b);return b;}
+function explicationStatutGlobal(statut,items){
+  const s=items.map(x=>x.StatutDemande).filter(Boolean);
+  if(statut==="En attente")return "Tous les matériels attendent une décision.";
+  if(statut==="Partiellement validée")return `${s.filter(x=>x==="Validée").length} validé(s), ${s.filter(x=>x==="En attente").length} en attente.`;
+  if(statut==="Validée")return "Tous les matériels ont été validés.";
+  if(statut==="Partiellement refusée")return "Au moins un matériel a été refusé ; consultez le détail.";
+  if(statut==="Refusée")return "Tous les matériels ont été refusés.";
+  if(statut==="En cours")return "Au moins un matériel a été remis ou restitué.";
+  if(statut==="Clôturée")return "Tous les matériels ont été restitués.";
+  return "Consultez le statut de chaque matériel.";
+}
+
+function afficherMesDemandes(){
+  const zone=$("mes-demandes");
+  zone.innerHTML="";
+
+  if(!currentUserRecord){
+    zone.textContent="Profil non identifié.";
+    afficherHistoriqueDemandes();
+    return;
+  }
+
+  const mine=demandes
+    .filter(d=>Number(d.Demandeur)===Number(currentUserRecord.id))
+    .sort((a,b)=>Number(b.id)-Number(a.id));
+
+  // Les demandes validées sont consultables dans l'historique, mais restent
+  // annulables tant que le matériel n'a pas été remis.
+  const statutsArchives=["Validée","Annulée","Refusée","Clôturée"];
+  const enCours=mine.filter(d=>!statutsArchives.includes(d.StatutGlobal));
+
+  if(!enCours.length){
+    zone.innerHTML='<div class="empty">Aucune demande en cours.</div>';
+  }
+
+  enCours.forEach(d=>{
+    const items=lignesDemande(d.id);
+    const b=creerBlocTitre(
+      d.IdDemande||`Demande n° ${d.id}`,
+      d.StatutGlobal||"Statut non renseigné"
+    );
+
+    ajouterTexte(b,explicationStatutGlobal(d.StatutGlobal,items),"small");
+    ajouterTexte(b,`Période : du ${afficherDate(d.DebutPret)} au ${afficherDate(d.FinPret)}`);
+
+    if(d.DetailsDemande){
+      ajouterTexte(b,`Motif : ${d.DetailsDemande}`);
+    }
+
+    items.forEach(l=>{
+      const m=materielParId(l.Materiel);
+      const sub=document.createElement("div");
+      sub.className="request";
+
+      ajouterTexte(
+        sub,
+        `${m?m.Materiel:"Matériel"} — quantité : ${l.Quantite||0} — ${l.StatutDemande||"Statut non renseigné"}`
+      );
+
+      if(l.ObservationsRetourPreteur){
+        ajouterTexte(sub,`Observation du prêteur : ${l.ObservationsRetourPreteur}`,"small");
+      }
+
+      const lab=document.createElement("label");
+      lab.textContent="Votre observation";
+
+      const ta=document.createElement("textarea");
+      ta.value=l.ObservationRetourDemandeur||"";
+      ta.onchange=()=>mettreAJourLigne(
+        l.id,
+        {ObservationRetourDemandeur:ta.value.trim()}
+      );
+
+      sub.append(lab,ta);
+
+      const actions=document.createElement("div");
+      actions.className="actions";
+
+      if(
+        Number(d.Demandeur)===Number(currentUserRecord.id) &&
+        ["En attente","Validée"].includes(l.StatutDemande)
+      ){
+        ajouterBouton(
+          actions,
+          "Annuler cet équipement",
+          "neutral",
+          ()=>annulerLigne(l)
+        );
+      }
+
+      if(l.StatutDemande==="Prêtée"){
+        ajouterTexte(
+          sub,
+          "Le matériel ayant été remis, il doit suivre le circuit normal jusqu'à sa restitution.",
+          "small"
+        );
+      }
+
+      if(estReferentDeLigne(l)){
+        ajouterBouton(
+          actions,
+          "Supprimer cette ligne",
+          "danger",
+          ()=>supprimerDirectement(l)
+        );
+      }else if(l.SuppressionDemandee===true){
+        ajouterTexte(
+          sub,
+          `Demande de suppression transmise le ${afficherDate(l.DateDemandeSuppression)} — en attente.`,
+          "small"
+        );
+      }else{
+        ajouterBouton(
+          actions,
+          "Demander la suppression",
+          "danger",
+          ()=>demanderSuppression(l)
+        );
+      }
+
+      if(actions.childNodes.length){
+        sub.appendChild(actions);
+      }
+
+      b.appendChild(sub);
+    });
+
+    zone.appendChild(b);
+  });
+
+  afficherHistoriqueDemandes();
+}
+
+function afficherHistoriqueDemandes(){
+  const zone=$("historique-demandes");
+  const filtre=$("filtre-historique")?.value||"";
+  zone.innerHTML="";
+
+  if(!currentUserRecord){
+    zone.textContent="Profil non identifié.";
+    return;
+  }
+
+  const statutsArchives=["Validée","Annulée","Refusée","Clôturée"];
+  const historique=demandes
+    .filter(d=>
+      Number(d.Demandeur)===Number(currentUserRecord.id) &&
+      statutsArchives.includes(d.StatutGlobal) &&
+      (!filtre || d.StatutGlobal===filtre)
+    )
+    .sort((a,b)=>Number(b.id)-Number(a.id));
+
+  if(!historique.length){
+    zone.innerHTML='<div class="empty">Aucune demande ne correspond à ce statut dans votre historique.</div>';
+    return;
+  }
+
+  historique.forEach(d=>{
+    const items=lignesDemande(d.id);
+    const b=creerBlocTitre(
+      d.IdDemande||`Demande n° ${d.id}`,
+      d.StatutGlobal||"Statut non renseigné"
+    );
+
+    ajouterTexte(
+      b,
+      `Période du ${afficherDate(d.DebutPret)} au ${afficherDate(d.FinPret)}`,
+      "small"
+    );
+
+    if(d.DetailsDemande){
+      ajouterTexte(b,`Motif initial : ${d.DetailsDemande}`);
+    }
+
+    items.forEach(l=>{
+      const m=materielParId(l.Materiel);
+      const sub=document.createElement("div");
+      sub.className="request";
+
+      ajouterTexte(
+        sub,
+        `${m?m.Materiel:"Matériel"} — quantité : ${l.Quantite||0} — Statut : ${l.StatutDemande||"Non renseigné"}`
+      );
+
+      if(l.StatutDemande==="Annulée"){
+        if(l.DateAnnulation){
+          ajouterTexte(
+            sub,
+            `Annulé le : ${afficherDate(l.DateAnnulation)}`,
+            "small"
+          );
+        }
+        if(l.MotifAnnulation){
+          ajouterTexte(
+            sub,
+            `Motif de l'annulation : ${l.MotifAnnulation}`,
+            "small"
+          );
+        }
+      }
+
+      if(l.ObservationsRetourPreteur){
+        ajouterTexte(
+          sub,
+          `Observation du prêteur : ${l.ObservationsRetourPreteur}`,
+          "small"
+        );
+      }
+
+      // Une demande validée peut encore être annulée tant que la remise
+      // n'a pas été confirmée : on conserve donc cette action dans l'historique.
+      if(
+        d.StatutGlobal==="Validée" &&
+        Number(d.Demandeur)===Number(currentUserRecord.id) &&
+        l.StatutDemande==="Validée"
+      ){
+        const actions=document.createElement("div");
+        actions.className="actions";
+        ajouterBouton(
+          actions,
+          "Annuler cet équipement",
+          "neutral",
+          ()=>annulerLigne(l)
+        );
+        sub.appendChild(actions);
+      }
+
+      b.appendChild(sub);
+    });
+
+    zone.appendChild(b);
+  });
+}
+
+function afficherDemandesATraiter(){
+  const z=$("a-traiter");z.innerHTML="";if(!currentUserRecord){z.textContent="Profil non identifié.";return;}
+  const list=lignes.filter(l=>estReferentDeLigne(l)&&l.StatutDemande==="En attente");
+  if(!list.length){z.innerHTML='<div class="empty">Aucune demande en attente dans votre périmètre.</div>';return;}
+  list.forEach(l=>{
+    const d=demandeParId(l.Demande),m=materielParId(l.Materiel),b=creerBlocTitre(m?m.Materiel:"Matériel inconnu",`${d?(d.IdDemande||`Demande n° ${d.id}`):"Demande"} — ${nomUtilisateur(l.Demandeur)}`);
+    ajouterTexte(b,`Quantité : ${l.Quantite} | Du ${afficherDate(l.DebutPret)} au ${afficherDate(l.FinPret)}`);if(d&&d.DetailsDemande)ajouterTexte(b,`Motif : ${d.DetailsDemande}`);
+    const a=document.createElement("div");a.className="actions";ajouterBouton(a,"Valider","success",()=>modifierStatutLigne(l,"Validée"));ajouterBouton(a,"Refuser","danger",()=>modifierStatutLigne(l,"Refusée"));b.appendChild(a);
+    const lab=document.createElement("label");lab.textContent="Observation du service prêteur";const ta=document.createElement("textarea");ta.value=l.ObservationsRetourPreteur||"";ta.onchange=()=>mettreAJourLigne(l.id,{ObservationsRetourPreteur:ta.value.trim()});b.append(lab,ta);z.appendChild(b);
+  });
+}
+function afficherPretsEnCours(){
+  const z=$("prets-en-cours");z.innerHTML="";if(!currentUserRecord){z.textContent="Profil non identifié.";return;}
+  const list=lignes.filter(l=>estReferentDeLigne(l)&&["Validée","Prêtée"].includes(l.StatutDemande));
+  if(!list.length){z.innerHTML='<div class="empty">Aucun prêt à suivre dans votre périmètre.</div>';return;}
+  list.forEach(l=>{
+    const d=demandeParId(l.Demande),m=materielParId(l.Materiel),b=creerBlocTitre(m?m.Materiel:"Matériel inconnu",`${d?(d.IdDemande||`Demande n° ${d.id}`):"Demande"} — ${nomUtilisateur(l.Demandeur)} — ${l.StatutDemande}`);
+    ajouterTexte(b,`Quantité : ${l.Quantite} | Du ${afficherDate(l.DebutPret)} au ${afficherDate(l.FinPret)}`);
+    const a=document.createElement("div");a.className="actions";
+    if(l.StatutDemande==="Validée")ajouterBouton(a,"Confirmer la remise","success",()=>modifierStatutLigne(l,"Prêtée",{DateRemise:Math.floor(Date.now()/1000)}));
+    if(l.StatutDemande==="Prêtée"){ajouterBouton(a,"Confirmer la restitution","neutral",()=>{if(confirm("Confirmer la restitution ?"))modifierStatutLigne(l,"Restituée",{DateRestitution:Math.floor(Date.now()/1000)});});}
+    b.appendChild(a);const lab=document.createElement("label");lab.textContent="Observation du service prêteur";const ta=document.createElement("textarea");ta.value=l.ObservationsRetourPreteur||"";ta.onchange=()=>mettreAJourLigne(l.id,{ObservationsRetourPreteur:ta.value.trim()});b.append(lab,ta);z.appendChild(b);
+  });
+}
+function afficherSuppressionsATraiter(){
+  const z=$("suppressions-a-traiter");z.innerHTML="";
+  if(!currentUserRecord||currentUserRecord.ReferentMateriel!==true){z.innerHTML='<div class="empty">Rubrique réservée aux référents matériel.</div>';return;}
+  const list=lignes.filter(l=>l.SuppressionDemandee===true&&estReferentDeLigne(l));
+  if(!list.length){z.innerHTML='<div class="empty">Aucune demande de suppression en attente dans votre périmètre.</div>';return;}
+  list.forEach(l=>{
+    const d=demandeParId(l.Demande),m=materielParId(l.Materiel),b=creerBlocTitre(m?m.Materiel:"Matériel inconnu",`${d?(d.IdDemande||`Demande n° ${d.id}`):"Demande"} — demandeur : ${nomUtilisateur(l.Demandeur)}`);
+    ajouterTexte(b,`Quantité : ${l.Quantite} — statut : ${l.StatutDemande}`);
+    ajouterTexte(b,`Demandée par ${nomUtilisateur(l.AuteurDemandeSuppression)} le ${afficherDate(l.DateDemandeSuppression)}`,"small");
+    const a=document.createElement("div");a.className="actions";ajouterBouton(a,"Accepter et supprimer","danger",()=>accepterSuppression(l));ajouterBouton(a,"Refuser","neutral",()=>refuserSuppression(l));b.appendChild(a);z.appendChild(b);
+  });
+}
+async function modifierStatutLigne(l,statut,extra={}){
+  if(!estReferentDeLigne(l)){alert("Vous n'êtes pas le référent compétent pour ce matériel.");return;}
+  try{await grist.docApi.applyUserActions([["UpdateRecord",TABLE_SUIVI,l.id,{StatutDemande:statut,...extra}]]);await chargerDonnees();}
+  catch(e){alert("Modification refusée par Grist. Vérifiez les permissions de StatutDemande, DateRemise et DateRestitution.\n\n"+(e.message||e));}
+}
+async function mettreAJourLigne(id,fields){
+  const l=lignes.find(x=>Number(x.id)===Number(id));if(!l)return;
+  const keys=Object.keys(fields);
+  if(keys.length!==1){alert("Modification non autorisée.");return;}
+  if(keys[0]==="ObservationRetourDemandeur"&&!estDemandeurDeLigne(l)){alert("Seul le demandeur peut modifier son observation.");return;}
+  if(keys[0]==="ObservationsRetourPreteur"&&!estReferentDeLigne(l)){alert("Seul le référent compétent peut modifier cette observation.");return;}
+  if(!["ObservationRetourDemandeur","ObservationsRetourPreteur"].includes(keys[0])){alert("Modification non autorisée.");return;}
+  try{await grist.docApi.applyUserActions([["UpdateRecord",TABLE_SUIVI,id,fields]]);await chargerDonnees();}
+  catch(e){alert("Modification refusée par Grist.\n\n"+(e.message||e));await chargerDonnees();}
+}
+async function annulerLigne(l){
+  // L'annulation est réservée au demandeur de la demande.
+  const demande = demandeParId(l.Demande);
+
+  if(!demande || !currentUserRecord ||
+     Number(demande.Demandeur)!==Number(currentUserRecord.id)){
+    alert("Seul le demandeur peut annuler cette ligne.");
+    return;
+  }
+
+  // Une annulation est possible uniquement avant la remise.
+  if(!["En attente","Validée"].includes(l.StatutDemande)){
+    alert("Cette ligne ne peut plus être annulée. Si le matériel a été remis, il doit suivre le circuit normal jusqu'à sa restitution.");
+    return;
+  }
+
+  // Saisie obligatoire du motif.
+  const motif=prompt("Indiquez le motif de l'annulation :");
+
+  if(motif===null)return;
+
+  if(!motif.trim()){
+    alert("Le motif de l'annulation est obligatoire.");
+    return;
+  }
+
+  if(!confirm(
+    "Confirmer l'annulation de ce matériel ?\n\n"+
+    "Cette opération sera enregistrée dans le suivi de la demande."
+  ))return;
+
+  const fields={
+    StatutDemande:"Annulée",
+    DateAnnulation:Math.floor(Date.now()/1000),
+    AuteurAnnulation:currentUserRecord.id,
+    MotifAnnulation:motif.trim()
+  };
+
+  try{
+    await grist.docApi.applyUserActions([
+      ["UpdateRecord",TABLE_SUIVI,l.id,fields]
+    ]);
+
+    await chargerDonnees();
+
+    alert("L'annulation a bien été enregistrée.");
+
+  }catch(e){
+    alert(
+      "Annulation refusée par Grist.\n\n"+
+      (e.message||e)
+    );
+  }
+}
+async function demanderSuppression(l){
+  if(!estDemandeurDeLigne(l)){alert("Seul le demandeur peut demander la suppression de sa ligne.");return;}
+  if(l.SuppressionDemandee===true){alert("Une demande de suppression est déjà en attente.");return;}
+  if(!confirm("Transmettre une demande de suppression au référent du matériel ?"))return;
+  const fields={SuppressionDemandee:true,DateDemandeSuppression:Math.floor(Date.now()/1000),AuteurDemandeSuppression:currentUserRecord.id};
+  try{await grist.docApi.applyUserActions([["UpdateRecord",TABLE_SUIVI,l.id,fields]]);await chargerDonnees();}
+  catch(e){alert("Demande non enregistrée. Vérifiez les permissions de SuppressionDemandee, DateDemandeSuppression et AuteurDemandeSuppression.\n\n"+(e.message||e));}
+}
+async function supprimerDirectement(l){
+  if(!estReferentDeLigne(l)){alert("Seul le référent compétent peut supprimer directement cette ligne.");return;}
+  if(!confirm("Supprimer définitivement cette ligne de suivi ? Cette opération est irréversible."))return;
+  try{await grist.docApi.applyUserActions([["RemoveRecord",TABLE_SUIVI,l.id]]);await chargerDonnees();}
+  catch(e){alert("Suppression refusée par Grist.\n\n"+(e.message||e));}
+}
+async function accepterSuppression(l){
+  if(!estReferentDeLigne(l)||l.SuppressionDemandee!==true){alert("Vous ne pouvez pas traiter cette demande.");return;}
+  if(!confirm("Accepter et supprimer définitivement cette ligne ?"))return;
+  try{await grist.docApi.applyUserActions([["RemoveRecord",TABLE_SUIVI,l.id]]);await chargerDonnees();}
+  catch(e){alert("Suppression refusée par Grist.\n\n"+(e.message||e));}
+}
+async function refuserSuppression(l){
+  if(!estReferentDeLigne(l)||l.SuppressionDemandee!==true){alert("Vous ne pouvez pas traiter cette demande.");return;}
+  if(!confirm("Refuser cette demande de suppression ?"))return;
+  try{await grist.docApi.applyUserActions([["UpdateRecord",TABLE_SUIVI,l.id,{SuppressionDemandee:false}]]);await chargerDonnees();}
+  catch(e){alert("Refus impossible.\n\n"+(e.message||e));}
+}
+function actualiserMinimumDate(){const n=new Date(),local=new Date(n.getTime()-n.getTimezoneOffset()*60000).toISOString().slice(0,16);$("debut").min=local;$("fin").min=local;}
+["materiel","quantite","debut","fin"].forEach(id=>{ $(id).addEventListener("change",()=>{actualiserMinimumDate();verifierFormulaire();});$(id).addEventListener("input",()=>{actualiserMinimumDate();verifierFormulaire();}); });
+$("ajouter").addEventListener("click",ajouterAuPanier);$("envoyer").addEventListener("click",envoyerDemande);
+$("filtre-historique").addEventListener("change",afficherHistoriqueDemandes);
+actualiserMinimumDate();
+grist.ready({requiredAccess:"full"});
+chargerDonnees().catch(e=>{$("identity").className="error";$("identity").textContent="Erreur de connexion à Grist : "+(e.message||e);});
+</script></body></html>
