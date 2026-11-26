@@ -20,7 +20,7 @@ button{border:0;border-radius:7px;padding:10px 14px;cursor:pointer;font-weight:b
 .field-error-note{font-size:12px;color:var(--red);font-weight:700;margin-top:2px}
 .zone-incomplete{outline:2px solid var(--red);outline-offset:3px;border-radius:6px}
 .zone-error-note{font-size:12px;color:var(--red);font-weight:700;margin-top:5px}
-.request{border:1px solid var(--border);padding:15px;border-radius:10px;margin:10px 0;background:#fff;box-shadow:0 2px 8px rgba(35,52,80,.04)}.history-panel{margin-top:24px}.history-panel details>summary{cursor:pointer;font-weight:bold;font-size:17px;list-style-position:inside;padding:4px 0 12px}.history-group{padding:14px 0;border-top:1px solid var(--border)}.history-group h3{margin-bottom:8px}.panel-attention{border-left:4px solid #d69a24}.panel-attention .actions button{padding:12px 18px;font-size:14px}.calendar-panel{margin-top:24px}.request-header{display:flex;justify-content:space-between;gap:12px;margin-bottom:8px;align-items:flex-start}.actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center}.cart-line{display:grid;grid-template-columns:minmax(0,1fr) 100px auto;gap:9px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}.empty{color:var(--muted);font-size:14px;padding:10px 0}.status-pill{display:inline-flex;align-items:center;flex:0 0 auto;border-radius:999px;padding:5px 11px;font-size:12px;line-height:1.2;font-weight:750;white-space:nowrap}.status-attente{background:#fff0cc;color:#875600}.status-validee{background:#d8f3e5;color:#126b47}.status-refusee{background:#fde3e3;color:#a72b35}.status-pretee{background:#dce8ff;color:#2945a6}.status-restituee{background:#ccebdd;color:#145b43}.status-annulee{background:#edf0f4;color:#596579}.status-inconnu{background:#edf0f4;color:#596579}.history-line{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 0;border-top:1px solid #edf0f4}.history-line-main{min-width:0}.history-line-title{font-weight:600}.history-meta{font-size:12px;color:var(--muted);margin-top:3px}.history-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;padding:14px 0 18px;border-bottom:1px solid var(--border);margin-bottom:8px}.history-controls .field{margin:0}.history-controls label{display:block;margin-bottom:5px}.history-controls select,.history-controls input{padding:9px;font-size:13px}.global-status{display:inline-flex;align-items:center;width:fit-content;font-size:11px;color:#596579;font-weight:600;background:#f1f3f6;padding:4px 9px;border-radius:6px;white-space:nowrap}
+.request{border:1px solid var(--border);padding:15px;border-radius:10px;margin:10px 0;background:#fff;box-shadow:0 2px 8px rgba(35,52,80,.04)}.history-panel{margin-top:24px}.history-panel details>summary{cursor:pointer;font-weight:bold;font-size:17px;list-style-position:inside;padding:4px 0 12px}.history-group{padding:14px 0;border-top:1px solid var(--border)}.history-group h3{margin-bottom:8px}.panel-attention{border-left:4px solid #d69a24}.panel-attention .actions button{padding:12px 18px;font-size:14px}.calendar-panel{margin-top:24px}.request-header{display:flex;justify-content:space-between;gap:12px;margin-bottom:8px;align-items:flex-start}.actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center}.cart-line{display:grid;grid-template-columns:minmax(0,1fr) 100px auto;gap:9px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}.empty{color:var(--muted);font-size:14px;padding:10px 0}.status-pill{display:inline-flex;align-items:center;flex:0 0 auto;border-radius:999px;padding:5px 11px;font-size:12px;line-height:1.2;font-weight:750;white-space:nowrap}.status-attente{background:#fff0cc;color:#875600}.status-validee{background:#d8f3e5;color:#126b47}.status-refusee{background:#fde3e3;color:#a72b35}.status-pretee{background:#dce8ff;color:#2945a6}.status-restituee{background:#ccebdd;color:#145b43}.status-annulee{background:#edf0f4;color:#596579}.status-inconnu{background:#edf0f4;color:#596579}.history-line{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 0;border-top:1px solid #edf0f4}.history-line-main{min-width:0}.history-line-title{font-weight:600}.history-meta{font-size:12px;color:var(--muted);margin-top:3px}.history-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;padding:14px 0 18px;border-bottom:1px solid var(--border);margin-bottom:8px}.history-controls .field{margin:0}.history-controls label{display:block;margin-bottom:5px}.history-controls select,.history-controls input{padding:9px;font-size:13px}
 .history-table-wrap{overflow-x:auto;margin-top:10px;border:1px solid var(--border);border-radius:8px}
 .history-table{width:100%;border-collapse:collapse;background:#fff;min-width:720px}
 .history-table th{background:#f3f5f9;text-align:left;font-size:12px;color:#4b5870;white-space:nowrap}
@@ -362,7 +362,7 @@ function afficherDemandesATraiter(){
   if(!list.length){z.innerHTML='<div class="empty">Aucune demande en attente dans votre périmètre.</div>';return;}
   list.forEach(l=>{
     const d=demandeParId(l.Demande),m=materielParId(l.Materiel),b=creerBlocTitre(m?m.Materiel:"Matériel inconnu",`${d?(d.IdDemande||`Demande n° ${d.id}`):"Demande"} — ${nomUtilisateur(l.Demandeur)}`);
-    const head=b.querySelector(".request-header");if(head){if(d?.StatutGlobal){const g=document.createElement("span");g.className="global-status";g.textContent=d.StatutGlobal;head.append(g);}head.append(creerBadgeStatut(l.StatutDemande));}
+    const head=b.querySelector(".request-header");if(head)head.append(creerBadgeStatut(l.StatutDemande));
     ajouterTexte(b,`Quantité : ${l.Quantite} | Du ${afficherDate(l.DebutPret)} au ${afficherDate(l.FinPret)}`);if(d&&d.DetailsDemande)ajouterTexte(b,`Motif : ${d.DetailsDemande}`);
     const a=document.createElement("div");a.className="actions";ajouterBouton(a,"Valider","success",()=>modifierStatutLigne(l,"Validée"));ajouterBouton(a,"Refuser","danger",()=>modifierStatutLigne(l,"Refusée"));b.appendChild(a);
     const lab=document.createElement("label");lab.textContent="Observation du service prêteur";const ta=document.createElement("textarea");ta.value=l.ObservationsRetourPreteur||"";ta.onchange=()=>mettreAJourLigne(l.id,{ObservationsRetourPreteur:ta.value.trim()});b.append(lab,ta);z.appendChild(b);
@@ -374,7 +374,7 @@ function afficherPretsEnCours(){
   if(!list.length){z.innerHTML='<div class="empty">Aucun prêt à suivre dans votre périmètre.</div>';return;}
   list.forEach(l=>{
     const d=demandeParId(l.Demande),m=materielParId(l.Materiel),b=creerBlocTitre(m?m.Materiel:"Matériel inconnu",`${d?(d.IdDemande||`Demande n° ${d.id}`):"Demande"} — ${nomUtilisateur(l.Demandeur)} — ${l.StatutDemande}`);
-    const head=b.querySelector(".request-header");if(head){if(d?.StatutGlobal){const g=document.createElement("span");g.className="global-status";g.textContent=d.StatutGlobal;head.append(g);}head.append(creerBadgeStatut(l.StatutDemande));}
+    const head=b.querySelector(".request-header");if(head)head.append(creerBadgeStatut(l.StatutDemande));
     ajouterTexte(b,`Quantité : ${l.Quantite} | Du ${afficherDate(l.DebutPret)} au ${afficherDate(l.FinPret)}`);
     const a=document.createElement("div");a.className="actions";
     if(l.StatutDemande==="Validée"){ajouterBouton(a,"Confirmer la remise","success",()=>modifierStatutLigne(l,"Prêtée",{DateRemise:Math.floor(Date.now()/1000)}));if(estReservationPersonnelle(l,d))ajouterBouton(a,"Annuler ma réservation","danger",()=>annulerReservationReferent(l));else ajouterBouton(a,"Annuler la validation et refuser le prêt","danger",()=>annulerValidationEtRefuser(l));}
@@ -401,10 +401,6 @@ function afficherDemandesAnnulees(){
     const items=lignesDuReferentPourDemande(d);
     const card=creerBlocTitre(d.IdDemande||`Demande n° ${d.id}`,`Emprunteur : ${nomUtilisateur(d.Demandeur)}`);
     card.classList.add("cancelled-request");
-    const global=document.createElement("span");
-    global.className="global-status";
-    global.textContent=d.StatutGlobal||"Statut global non renseigné";
-    card.querySelector(".request-header")?.append(global);
     ajouterTexte(card,`Période prévue : du ${afficherDate(d.DebutPret)} au ${afficherDate(d.FinPret)}`,"small");
     items.forEach(l=>{
       const m=materielParId(l.Materiel);
@@ -519,9 +515,8 @@ function afficherFicheHistorique(d,ligneSelectionnee){
   const infos=document.createElement("p");infos.className="small";
   infos.textContent="Demandeur : "+nomUtilisateur(d.Demandeur)+" · Date de demande : "+(dateDemandeHistorique(d)?afficherDate(dateDemandeHistorique(d)):"Non renseignée")+" · Période : du "+afficherDate(d.DebutPret)+" au "+afficherDate(d.FinPret);
   const motif=document.createElement("p");motif.textContent="Motif / détails : "+(d.DetailsDemande||"Non renseigné");
-  const global=document.createElement("p");global.className="small";global.textContent="Statut global : "+(d.StatutGlobal||"Non renseigné");
   const sousTitre=document.createElement("strong");sousTitre.textContent="Matériels de cette demande";
-  fiche.append(titre,infos,motif,global,sousTitre);
+  fiche.append(titre,infos,motif,sousTitre);
   // La fiche est en lecture seule. Elle présente les autres lignes de la demande lorsqu'elles sont accessibles au widget.
   lignesDemande(d.id).forEach(l=>{
     const m=materielParId(l.Materiel),line=document.createElement("div");line.className="history-detail-line";
