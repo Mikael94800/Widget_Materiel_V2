@@ -129,7 +129,8 @@ async function chargerDonnees(){
   materiels=rowsFromGrist(m);utilisateurs=rowsFromGrist(u);demandes=rowsFromGrist(d);lignes=rowsFromGrist(s);
   // Identification sécurisée par la ligne unique rendue visible dans la table Identification.
   await identifierUtilisateur();
-  afficherIdentite();afficherCatalogue();afficherDemandesATraiter();afficherPretsEnCours();afficherSuppressionsATraiter();afficherCatalogueReservation();afficherCalendrier();verifierReservation();
+  if(currentUserRecord.ReferentMateriel!==true)throw new Error("Ce widget est réservé aux référents matériel.");
+  afficherIdentite();afficherDemandesATraiter();afficherPretsEnCours();afficherSuppressionsATraiter();afficherCatalogueReservation();afficherCalendrier();verifierReservation();
 }
 function afficherIdentite(){
   $("version-widget").textContent="Widget Matériel — version "+VERSION_WIDGET;
@@ -647,10 +648,6 @@ async function refuserSuppression(l){
   catch(e){alert("Refus impossible.\n\n"+(e.message||e));}
 }
 function actualiserMinimumDate(){const n=new Date(),local=new Date(n.getTime()-n.getTimezoneOffset()*60000).toISOString().slice(0,16);$("debut").min=local;$("fin").min=local;}
-["materiel","quantite","debut","fin"].forEach(id=>{ $(id).addEventListener("change",()=>{actualiserMinimumDate();verifierFormulaire();});$(id).addEventListener("input",()=>{actualiserMinimumDate();verifierFormulaire();}); });
-$("ajouter").addEventListener("click",ajouterAuPanier);$("envoyer").addEventListener("click",envoyerDemande);
-$("filtre-historique").addEventListener("change",afficherHistoriqueDemandes);
-actualiserMinimumDate();
 ["reservation-materiel","reservation-quantite","reservation-debut","reservation-fin"].forEach(id=>{ $(id).addEventListener("change",verifierReservation);$(id).addEventListener("input",verifierReservation); });
 $("reservation-enregistrer").addEventListener("click",creerReservationReferent);
 $("calendrier-mois").addEventListener("change",afficherCalendrier);
