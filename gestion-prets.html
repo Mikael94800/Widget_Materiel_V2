@@ -43,7 +43,7 @@ button{border:0;border-radius:7px;padding:10px 14px;cursor:pointer;font-weight:b
 #reservation-materiel{max-width:520px}
 #reservation-quantite{max-width:130px}
 #reservation-debut,#reservation-fin{max-width:270px;cursor:pointer;position:relative}
-#reservation-debut::-webkit-calendar-picker-indicator,#reservation-fin::-webkit-calendar-picker-indicator{position:absolute;inset:0;width:auto;height:auto;opacity:0;cursor:pointer}
+/* Conserver le pictogramme natif : ne pas étendre sa zone cliquable sur tout le champ. */
 @media(max-width:650px){.reservation-form .grid{grid-template-columns:1fr}}
 
 .app-dialog-overlay{position:fixed;inset:0;z-index:10000;background:rgba(18,28,45,.48);display:flex;align-items:center;justify-content:center;padding:18px}
@@ -787,7 +787,9 @@ function actualiserMinimumDate(){const n=new Date(),local=new Date(n.getTime()-n
 ["reservation-materiel","reservation-quantite","reservation-debut","reservation-fin"].forEach(id=>{ $(id).addEventListener("change",verifierReservation);$(id).addEventListener("input",verifierReservation); });
 ["reservation-debut","reservation-fin"].forEach(id=>{
   const champ=$(id);
-  champ.addEventListener("click",()=>{
+  // Ouvrir le sélecteur dès l'appui, quelle que soit la zone du champ.
+  // showPicker() doit être appelé directement pendant l'interaction utilisateur.
+  champ.addEventListener("pointerdown",()=>{
     if(typeof champ.showPicker==="function"){
       try{champ.showPicker();}catch(_){}
     }
