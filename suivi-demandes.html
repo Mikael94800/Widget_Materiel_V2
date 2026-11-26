@@ -47,10 +47,9 @@ button{border:0;border-radius:7px;padding:10px 14px;cursor:pointer;font-weight:b
       <label for="filtre-historique">Rechercher par statut</label>
       <select id="filtre-historique">
         <option value="">Toutes les demandes archivées</option>
-        <option value="Validée">Validées</option>
         <option value="Annulée">Annulées</option>
         <option value="Refusée">Refusées</option>
-        <option value="Clôturée">Clôturées</option>
+        <option value="Clôturée">Restituées / clôturées</option>
       </select>
     </div>
     <div id="historique-demandes">Chargement…</div>
@@ -111,6 +110,18 @@ function serviceUtilisateur(){return currentUserRecord?currentUserRecord.Service
 function materielParId(id){return materiels.find(m=>Number(m.id)===Number(id));}
 function demandeParId(id){return demandes.find(d=>Number(d.id)===Number(id));}
 function lignesDemande(id){return lignes.filter(l=>Number(l.Demande)===Number(id));}
+const STATUTS_TERMINAUX=["Annulée","Refusée","Restituée"];
+function demandeArchivee(items){
+  return items.length>0&&items.every(l=>STATUTS_TERMINAUX.includes(l.StatutDemande));
+}
+function statutArchiveDemande(items){
+  const statuts=items.map(l=>l.StatutDemande);
+  if(!statuts.length)return "";
+  if(statuts.every(s=>s==="Annulée"))return "Annulée";
+  if(statuts.every(s=>s==="Refusée"))return "Refusée";
+  if(demandeArchivee(items))return "Clôturée";
+  return "";
+}
 function materielAutorisePourUtilisateur(m){return Boolean(serviceUtilisateur())&&(m.ServicePreteur===serviceUtilisateur()||normaliserListe(m.ServicesDestinataires).includes(serviceUtilisateur()));}
 
 // Référent fonctionnel = booléen actif + affectation du matériel + service prêteur.
@@ -323,8 +334,9 @@ function afficherMesDemandes(){
   const mine=demandes
     .filter(d=>Number(d.Demandeur)===Number(currentUserRecord.id))
     .sort((a,b)=>Number(b.id)-Number(a.id));
-  const statutsArchives=["Validée","Annulée","Refusée","Clôturée"];
-  const enCours=mine.filter(d=>!statutsArchives.includes(d.StatutGlobal));
+  // Une demande reste en cours tant qu'au moins une ligne n'est pas terminale.
+  // La validation seule ne l'archive pas : le demandeur peut encore l'annuler.
+  const enCours=mine.filter(d=>!demandeArchivee(lignesDemande(d.id)));
   if(!enCours.length)zone.innerHTML='<div class="empty">Aucune demande en cours.</div>';
   enCours.forEach(d=>zone.appendChild(creerCarteDemande(d,lignesDemande(d.id),false)));
   afficherHistoriqueDemandes();
@@ -340,13 +352,14 @@ function afficherHistoriqueDemandes(){
     return;
   }
 
-  const statutsArchives=["Validée","Annulée","Refusée","Clôturée"];
   const historique=demandes
-    .filter(d=>
-      Number(d.Demandeur)===Number(currentUserRecord.id) &&
-      statutsArchives.includes(d.StatutGlobal) &&
-      (!filtre || d.StatutGlobal===filtre)
-    )
+    .filter(d=>{
+      if(Number(d.Demandeur)!==Number(currentUserRecord.id))return false;
+      const items=lignesDemande(d.id);
+      if(!demandeArchivee(items))return false;
+      const statut=statutArchiveDemande(items);
+      return !filtre||statut===filtre;
+    })
     .sort((a,b)=>Number(b.id)-Number(a.id));
 
   if(!historique.length){
