@@ -61,6 +61,22 @@ button{border:0;border-radius:7px;padding:10px 14px;cursor:pointer;font-weight:b
 <section class="panel"><h3>Demandes à traiter par mon service prêteur</h3><p class="small">Les demandes qui attendent encore une décision sur un matériel de votre service.</p><div id="a-traiter">Chargement…</div></section>
 <section class="panel"><h3>Prêts en cours et restitutions</h3><p class="small">Matériels validés, remis ou en attente de restitution.</p><div id="prets-en-cours">Chargement…</div></section>
 <section class="panel panel-attention"><h3>Demandes annulées par les emprunteurs</h3><p class="small">Après vérification, archivez la demande pour la retirer de votre vue courante. Elle restera consultable dans l'historique.</p><div id="annulations-a-archiver">Chargement…</div></section>
+<section class="panel calendar-panel">
+<div class="request-header" style="align-items:center;flex-wrap:wrap">
+  <h3>Calendrier de mobilisation du matériel</h3>
+  <div class="actions" style="margin-top:0">
+    <button type="button" class="neutral" id="calendrier-precedent" aria-label="Période précédente">‹</button>
+    <button type="button" class="neutral" id="calendrier-aujourdhui">Aujourd'hui</button>
+    <button type="button" class="neutral" id="calendrier-suivant" aria-label="Période suivante">›</button>
+    <select id="calendrier-vue" aria-label="Affichage du calendrier" style="width:auto;min-width:135px">
+      <option value="semaine">Semaine</option><option value="mois" selected>Mois</option><option value="trimestre">Trimestre</option>
+    </select>
+  </div>
+</div>
+<div id="calendrier-periode" class="small" style="font-weight:bold;margin:0 0 12px"></div>
+<p class="small">Calendrier limité au matériel de votre service. Les demandes en attente, réservations validées et prêts en cours sont distingués.</p>
+<div id="calendrier-materiel">Chargement…</div>
+</section>
 <section class="panel history-panel"><h3>Historique des demandes</h3>
 <p class="small">Une ligne par matériel demandé. Cliquez sur une ligne pour consulter la fiche complète de la demande.</p>
 <div class="history-controls">
@@ -80,11 +96,6 @@ button{border:0;border-radius:7px;padding:10px 14px;cursor:pointer;font-weight:b
 </tr></thead><tbody id="historique-resultats"><tr><td colspan="5" class="empty">Chargement…</td></tr></tbody></table></div>
 <div id="historique-compteur" class="small" style="margin-top:8px"></div>
 <div id="historique-fiche" class="history-detail" hidden></div>
-</section>
-<section class="panel calendar-panel">
-<div class="request-header"><h3>Calendrier de mobilisation du matériel</h3><div class="field"><label for="calendrier-mois">Mois</label><input id="calendrier-mois" type="month"></div></div>
-<p class="small">Calendrier limité au matériel de votre service. Les demandes en attente, réservations validées et prêts en cours sont distingués.</p>
-<div id="calendrier-materiel">Chargement…</div>
 </section>
 
 
@@ -528,29 +539,65 @@ async function creerReservationReferent(){
     await chargerDonnees();
   }catch(e){msg.className="error";msg.textContent="Réservation non finalisée : "+(e.message||e);btn.disabled=false;}
 }
+let calendrierDate=new Date();
+let calendrierVue="mois";
+function debutSemaine(date){
+  const d=new Date(date.getFullYear(),date.getMonth(),date.getDate());
+  d.setDate(d.getDate()-((d.getDay()+6)%7));return d;
+}
+function decalageCalendrier(delta){
+  if(calendrierVue==="semaine")calendrierDate.setDate(calendrierDate.getDate()+7*delta);
+  else if(calendrierVue==="trimestre")calendrierDate.setMonth(calendrierDate.getMonth()+3*delta);
+  else calendrierDate.setMonth(calendrierDate.getMonth()+delta);
+  afficherCalendrier();
+}
 function afficherCalendrier(){
-  const zone=$("calendrier-materiel");if(!zone)return;zone.innerHTML="";
+  const zone=$("calendrier-materiel"),label=$("calendrier-periode");
+  if(!zone)return;zone.innerHTML="";
   if(!currentUserRecord){zone.textContent="Profil non identifié.";return;}
-  const serviceMateriels=materiels.filter(materielDuService);
-  const input=$("calendrier-mois");
-  if(!input.value){const n=new Date();input.value=`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}`;}
-  const [year,month]=input.value.split("-").map(Number);
-  if(!year||!month){zone.textContent="Choisissez un mois.";return;}
-  const first=new Date(year,month-1,1),days=new Date(year,month,0).getDate();
-  const table=document.createElement("div");table.style.display="grid";table.style.gridTemplateColumns="repeat(7,minmax(0,1fr))";table.style.gap="5px";
-  ["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"].forEach(x=>{const h=document.createElement("strong");h.textContent=x;h.style.textAlign="center";table.appendChild(h);});
-  const offset=(first.getDay()+6)%7;
-  for(let i=0;i<offset;i++){const blank=document.createElement("div");table.appendChild(blank);}
-  for(let day=1;day<=days;day++){
-    const cell=document.createElement("div");cell.style.minHeight="105px";cell.style.padding="6px";cell.style.border="1px solid var(--border)";cell.style.borderRadius="6px";cell.style.background="#fff";
-    const head=document.createElement("strong");head.textContent=String(day);cell.appendChild(head);
-    const start=new Date(year,month-1,day).getTime()/1000,end=new Date(year,month-1,day+1).getTime()/1000;
-    lignes.filter(l=>{const m=materielParId(l.Materiel);return m&&materielDuService(m)&&l.DebutPret!=null&&l.FinPret!=null&&chevauche(Number(l.DebutPret),Number(l.FinPret),start,end)&&["En attente","Validée","Prêtée"].includes(l.StatutDemande);})
-    .forEach(l=>{const m=materielParId(l.Materiel),d=demandeParId(l.Demande),event=document.createElement("div");event.style.fontSize="10px";event.style.marginTop="4px";event.style.padding="3px";event.style.borderRadius="4px";event.style.background=l.StatutDemande==="En attente"?"#fff0cc":l.StatutDemande==="Prêtée"?"#dce8ff":"#d8f3e5";event.textContent=`${m.Materiel} ×${l.Quantite} — ${l.StatutDemande}`;event.title=`${d?.IdDemande||"Demande"} · ${nomUtilisateur(l.Demandeur)}`;cell.appendChild(event);});
-    table.appendChild(cell);
+  const jours=["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"];
+  const formatDate=d=>d.toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"});
+  const ajouterEntetes=grid=>jours.forEach(j=>{const h=document.createElement("strong");h.textContent=j;h.style.textAlign="center";h.style.fontSize="12px";grid.appendChild(h);});
+  const evenementsJour=(cell,start,end)=>{
+    lignes.filter(l=>{const m=materielParId(l.Materiel);return m&&materielDuService(m)&&l.DebutPret!=null&&l.FinPret!=null&&chevauche(Number(l.DebutPret),Number(l.FinPret),start.getTime()/1000,end.getTime()/1000)&&["En attente","Validée","Prêtée"].includes(l.StatutDemande);})
+    .forEach(l=>{const m=materielParId(l.Materiel),d=demandeParId(l.Demande),event=document.createElement("div");
+      event.style.fontSize="10px";event.style.marginTop="4px";event.style.padding="4px";event.style.borderRadius="4px";event.style.overflowWrap="anywhere";
+      event.style.background=l.StatutDemande==="En attente"?"#fff0cc":l.StatutDemande==="Prêtée"?"#dce8ff":"#d8f3e5";
+      event.textContent=`${m.Materiel} ×${l.Quantite} — ${l.StatutDemande}`;
+      event.title=`${d?.IdDemande||"Demande"} · ${nomUtilisateur(d?.Demandeur)}`;cell.appendChild(event);
+    });
+  };
+  const creerJour=(date,moisReference)=>{
+    const cell=document.createElement("div");cell.style.minHeight=calendrierVue==="trimestre"?"76px":"105px";
+    cell.style.padding="5px";cell.style.border="1px solid var(--border)";cell.style.borderRadius="6px";cell.style.background="#fff";
+    if(moisReference&&date.getMonth()!==moisReference.getMonth())cell.style.opacity=".38";
+    const head=document.createElement("strong");head.textContent=String(date.getDate());head.style.fontSize="12px";cell.appendChild(head);
+    const next=new Date(date.getFullYear(),date.getMonth(),date.getDate()+1);evenementsJour(cell,date,next);return cell;
+  };
+  const creerMois=(mois,compact=false)=>{
+    const premier=new Date(mois.getFullYear(),mois.getMonth(),1),offset=(premier.getDay()+6)%7,nbJours=new Date(mois.getFullYear(),mois.getMonth()+1,0).getDate();
+    const grid=document.createElement("div");grid.style.display="grid";grid.style.gridTemplateColumns="repeat(7,minmax(0,1fr))";grid.style.gap=compact?"3px":"5px";grid.style.minWidth="0";
+    ajouterEntetes(grid);for(let i=0;i<offset;i++)grid.appendChild(document.createElement("div"));
+    for(let day=1;day<=nbJours;day++)grid.appendChild(creerJour(new Date(mois.getFullYear(),mois.getMonth(),day),compact?mois:null));
+    return grid;
+  };
+  if(calendrierVue==="semaine"){
+    const debut=debutSemaine(calendrierDate),fin=new Date(debut);fin.setDate(fin.getDate()+6);
+    if(label)label.textContent=`Du ${formatDate(debut)} au ${formatDate(fin)}`;
+    const grid=document.createElement("div");grid.style.display="grid";grid.style.gridTemplateColumns="repeat(7,minmax(0,1fr))";grid.style.gap="5px";ajouterEntetes(grid);
+    for(let i=0;i<7;i++){const d=new Date(debut);d.setDate(d.getDate()+i);grid.appendChild(creerJour(d));}zone.appendChild(grid);
+  }else if(calendrierVue==="trimestre"){
+    const premier=Math.floor(calendrierDate.getMonth()/3)*3,debut=new Date(calendrierDate.getFullYear(),premier,1),fin=new Date(calendrierDate.getFullYear(),premier+3,0);
+    if(label)label.textContent=`Du ${formatDate(debut)} au ${formatDate(fin)}`;
+    const bloc=document.createElement("div");bloc.style.display="grid";bloc.style.gridTemplateColumns="repeat(auto-fit,minmax(260px,1fr))";bloc.style.gap="16px";
+    for(let i=0;i<3;i++){const mois=new Date(debut.getFullYear(),debut.getMonth()+i,1),item=document.createElement("div"),titre=document.createElement("h4");
+      titre.textContent=mois.toLocaleDateString("fr-FR",{month:"long",year:"numeric"});titre.style.margin="0 0 8px";item.appendChild(titre);item.appendChild(creerMois(mois,true));bloc.appendChild(item);}
+    zone.appendChild(bloc);
+  }else{
+    const debut=new Date(calendrierDate.getFullYear(),calendrierDate.getMonth(),1);
+    if(label)label.textContent=debut.toLocaleDateString("fr-FR",{month:"long",year:"numeric"});zone.appendChild(creerMois(debut));
   }
-  zone.appendChild(table);
-  const legend=document.createElement("p");legend.className="small";legend.textContent="Jaune : en attente · Vert : validée · Bleu : prêtée";zone.appendChild(legend);
+  const legend=document.createElement("p");legend.className="small";legend.style.marginTop="12px";legend.textContent="Jaune : en attente · Vert : validée · Bleu : prêtée";zone.appendChild(legend);
 }
 function estReservationPersonnelle(l,d){
   const m=materielParId(l.Materiel);
@@ -655,7 +702,10 @@ function actualiserMinimumDate(){const n=new Date(),local=new Date(n.getTime()-n
 ["reservation-materiel","reservation-quantite","reservation-debut","reservation-fin"].forEach(id=>{ $(id).addEventListener("change",verifierReservation);$(id).addEventListener("input",verifierReservation); });
 installerValidationChamps(["reservation-materiel","reservation-quantite","reservation-debut","reservation-fin","reservation-details"]);
 $("reservation-enregistrer").addEventListener("click",creerReservationReferent);
-$("calendrier-mois").addEventListener("change",afficherCalendrier);
+$("calendrier-precedent").addEventListener("click",()=>decalageCalendrier(-1));
+$("calendrier-suivant").addEventListener("click",()=>decalageCalendrier(1));
+$("calendrier-aujourdhui").addEventListener("click",()=>{calendrierDate=new Date();afficherCalendrier();});
+$("calendrier-vue").addEventListener("change",e=>{calendrierVue=e.target.value;afficherCalendrier();});
 ["historique-statut","historique-date-debut","historique-date-fin","historique-materiel","historique-demandeur"].forEach(id=>$(id).addEventListener("change",afficherHistoriqueReferent));
 document.querySelectorAll("[data-history-sort]").forEach(btn=>btn.addEventListener("click",()=>{const col=btn.dataset.historySort;if(historiqueTri.colonne===col)historiqueTri.sens*=-1;else historiqueTri={colonne:col,sens:1};afficherHistoriqueReferent();}));
 function reinitialiserFiltresHistoriqueReferent(){
