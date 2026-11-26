@@ -22,6 +22,17 @@ button{border:0;border-radius:7px;padding:10px 14px;cursor:pointer;font-weight:b
 .zone-error-note{font-size:12px;color:var(--red);font-weight:700;margin-top:5px}
 .request{border:1px solid var(--border);padding:15px;border-radius:10px;margin:10px 0;background:white}.history-panel{margin-top:28px}.history-panel details>summary{cursor:pointer;font-weight:bold;font-size:20px;list-style-position:inside}.history-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:16px 0}.history-controls label{min-width:145px}.history-controls select{max-width:320px}.request-header{display:flex;justify-content:flex-start;gap:10px;align-items:center;margin-bottom:10px}.request-materials{font-size:19px;font-weight:700;line-height:1.35}.request-status{display:inline-flex;align-items:center;width:fit-content;padding:4px 9px;border-radius:6px;background:#f1f3f6;color:#596579;font-weight:600;font-size:11px;letter-spacing:.01em}.request-meta{margin:5px 0;font-size:14px}.request-reference{margin-top:8px;font-size:11px;color:var(--muted)}.request-line{border-top:1px solid var(--border);padding:12px 0 2px;margin-top:10px}.request-line-heading{display:flex;justify-content:space-between;align-items:center;gap:12px}.request-line-name{font-size:15px;font-weight:650;line-height:1.4}.line-status{display:inline-flex;align-items:center;flex:0 0 auto;border-radius:999px;padding:5px 11px;font-size:12px;line-height:1.2;font-weight:750;white-space:nowrap}.line-status-attente{background:#fff0cc;color:#875600}.line-status-validee{background:#d8f3e5;color:#126b47}.line-status-refusee{background:#fde3e3;color:#a72b35}.line-status-pretee{background:#dce8ff;color:#2945a6}.line-status-restituee{background:#ccebdd;color:#145b43}.line-status-annulee{background:#edf0f4;color:#596579}.line-status-inconnue{background:#edf0f4;color:#596579}.history-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;padding:14px 0 18px;border-bottom:1px solid var(--border);margin-bottom:8px}.history-controls .field{margin:0}.history-controls label{display:block;margin-bottom:5px}.history-controls select,.history-controls input{padding:9px;font-size:13px}.actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center}.cart-line{display:grid;grid-template-columns:minmax(0,1fr) 100px auto;gap:9px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}.empty{color:var(--muted);font-size:14px;padding:8px 0}
 @media(max-width:650px){body{padding:12px}.page-header{align-items:flex-start;flex-direction:column}.page-header #identity{margin:0;max-width:100%;text-align:left}.grid{grid-template-columns:1fr}.cart-line{grid-template-columns:1fr 85px}.cart-line button{grid-column:1/-1}.request-header{align-items:stretch;flex-direction:column}.request-status{min-width:0;text-align:left}}
+
+.app-dialog-overlay{position:fixed;inset:0;z-index:10000;background:rgba(18,28,45,.48);display:flex;align-items:center;justify-content:center;padding:18px}
+.app-dialog{width:min(460px,100%);background:#fff;border:1px solid #dce2eb;border-radius:12px;box-shadow:0 18px 55px rgba(15,23,42,.24);overflow:hidden;color:#202b3c}
+.app-dialog-header{padding:17px 20px;border-bottom:1px solid #e8ecf2}
+.app-dialog-header h3{margin:0;font-size:17px;font-weight:700;color:#26364d}
+.app-dialog-content{padding:20px;white-space:pre-line;font-size:14px;line-height:1.55}
+.app-dialog-content p{margin:0}
+.app-dialog-input{display:block;width:100%;min-height:84px;margin-top:14px;padding:10px;border:1px solid #cbd3df;border-radius:7px;font:inherit;resize:vertical;box-sizing:border-box}
+.app-dialog-actions{display:flex;justify-content:flex-end;gap:9px;padding:0 20px 18px}
+.app-dialog-actions button{min-width:104px}
+
 </style></head>
 <body>
 <div class="page-header">
@@ -66,6 +77,70 @@ const TABLE_MATERIEL="MATERIEL",TABLE_UTILISATEURS="Utilisateurs",TABLE_IDENTIFI
 const STATUTS_RESERVANTS=["En attente","Validée","Prêtée"];
 let materiels=[],utilisateurs=[],demandes=[],lignes=[],currentUserRecord=null,panier=[];
 const $=id=>document.getElementById(id);
+
+function boiteDialogue(message,type="confirmation"){
+  return new Promise(resolve=>{
+    const overlay=document.createElement("div");
+    overlay.className="app-dialog-overlay";
+    const dialog=document.createElement("div");
+    dialog.className="app-dialog";
+    dialog.setAttribute("role","dialog");
+    dialog.setAttribute("aria-modal","true");
+    dialog.setAttribute("aria-labelledby","app-dialog-title");
+    const header=document.createElement("div");
+    header.className="app-dialog-header";
+    const title=document.createElement("h3");
+    title.id="app-dialog-title";
+    title.textContent="Gestion du matériel";
+    header.appendChild(title);
+    const content=document.createElement("div");
+    content.className="app-dialog-content";
+    const text=document.createElement("p");
+    text.textContent=String(message??"");
+    content.appendChild(text);
+    let field=null;
+    if(type==="saisie"){
+      field=document.createElement("textarea");
+      field.className="app-dialog-input";
+      field.rows=3;
+      field.setAttribute("aria-label","Motif");
+      content.appendChild(field);
+    }
+    const actions=document.createElement("div");
+    actions.className="app-dialog-actions";
+    const cancel=document.createElement("button");
+    cancel.type="button";
+    cancel.className="neutral";
+    cancel.textContent="Annuler";
+    const ok=document.createElement("button");
+    ok.type="button";
+    ok.textContent=type==="saisie"?"Valider":"Confirmer";
+    let closed=false;
+    const finish=value=>{
+      if(closed)return;
+      closed=true;
+      document.removeEventListener("keydown",onKey);
+      overlay.remove();
+      resolve(value);
+    };
+    const onKey=e=>{
+      if(e.key==="Escape"){e.preventDefault();finish(type==="saisie"?null:false);}
+      if(e.key==="Enter"&&type==="confirmation"){e.preventDefault();finish(true);}
+    };
+    cancel.addEventListener("click",()=>finish(type==="saisie"?null:false));
+    ok.addEventListener("click",()=>finish(type==="saisie"?field.value:true));
+    overlay.addEventListener("click",e=>{if(e.target===overlay)finish(type==="saisie"?null:false);});
+    actions.append(cancel,ok);
+    dialog.append(header,content,actions);
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+    document.addEventListener("keydown",onKey);
+    (field||ok).focus();
+  });
+}
+function boiteConfirmation(message){return boiteDialogue(message,"confirmation");}
+function boiteSaisie(message){return boiteDialogue(message,"saisie");}
+
 
 async function identifierUtilisateur(){
   currentUserRecord=null;
@@ -435,7 +510,7 @@ function afficherPretsEnCours(){
     ajouterTexte(b,`Quantité : ${l.Quantite} | Du ${afficherDate(l.DebutPret)} au ${afficherDate(l.FinPret)}`);
     const a=document.createElement("div");a.className="actions";
     if(l.StatutDemande==="Validée")ajouterBouton(a,"Confirmer la remise","success",()=>modifierStatutLigne(l,"Prêtée",{DateRemise:Math.floor(Date.now()/1000)}));
-    if(l.StatutDemande==="Prêtée"){ajouterBouton(a,"Confirmer la restitution","neutral",()=>{if(confirm("Confirmer la restitution ?"))modifierStatutLigne(l,"Restituée",{DateRestitution:Math.floor(Date.now()/1000)});});}
+    if(l.StatutDemande==="Prêtée"){ajouterBouton(a,"Confirmer la restitution","neutral",async()=>{if(await boiteConfirmation("Confirmer la restitution ?"))modifierStatutLigne(l,"Restituée",{DateRestitution:Math.floor(Date.now()/1000)});});}
     b.appendChild(a);const lab=document.createElement("label");lab.textContent="Observation du service prêteur";const ta=document.createElement("textarea");ta.value=l.ObservationsRetourPreteur||"";ta.onchange=()=>mettreAJourLigne(l.id,{ObservationsRetourPreteur:ta.value.trim()});b.append(lab,ta);z.appendChild(b);
   });
 }
@@ -483,7 +558,7 @@ async function annulerLigne(l){
   }
 
   // Saisie obligatoire du motif.
-  const motif=prompt("Indiquez le motif de l'annulation :");
+  const motif=await boiteSaisie("Indiquez le motif de l'annulation :");
 
   if(motif===null)return;
 
@@ -492,7 +567,7 @@ async function annulerLigne(l){
     return;
   }
 
-  if(!confirm(
+  if(!await boiteConfirmation(
     "Confirmer l'annulation de ce matériel ?\n\n"+
     "Cette opération sera enregistrée dans le suivi de la demande."
   ))return;
@@ -523,26 +598,26 @@ async function annulerLigne(l){
 async function demanderSuppression(l){
   if(!estDemandeurDeLigne(l)){alert("Seul le demandeur peut demander la suppression de sa ligne.");return;}
   if(l.SuppressionDemandee===true){alert("Une demande de suppression est déjà en attente.");return;}
-  if(!confirm("Transmettre une demande de suppression au référent du matériel ?"))return;
+  if(!await boiteConfirmation("Transmettre une demande de suppression au référent du matériel ?"))return;
   const fields={SuppressionDemandee:true,DateDemandeSuppression:Math.floor(Date.now()/1000),AuteurDemandeSuppression:currentUserRecord.id};
   try{await grist.docApi.applyUserActions([["UpdateRecord",TABLE_SUIVI,l.id,fields]]);await chargerDonnees();}
   catch(e){alert("Demande non enregistrée. Vérifiez les permissions de SuppressionDemandee, DateDemandeSuppression et AuteurDemandeSuppression.\n\n"+(e.message||e));}
 }
 async function supprimerDirectement(l){
   if(!estReferentDeLigne(l)){alert("Seul le référent compétent peut supprimer directement cette ligne.");return;}
-  if(!confirm("Supprimer définitivement cette ligne de suivi ? Cette opération est irréversible."))return;
+  if(!await boiteConfirmation("Supprimer définitivement cette ligne de suivi ? Cette opération est irréversible."))return;
   try{await grist.docApi.applyUserActions([["RemoveRecord",TABLE_SUIVI,l.id]]);await chargerDonnees();}
   catch(e){alert("Suppression refusée par Grist.\n\n"+(e.message||e));}
 }
 async function accepterSuppression(l){
   if(!estReferentDeLigne(l)||l.SuppressionDemandee!==true){alert("Vous ne pouvez pas traiter cette demande.");return;}
-  if(!confirm("Accepter et supprimer définitivement cette ligne ?"))return;
+  if(!await boiteConfirmation("Accepter et supprimer définitivement cette ligne ?"))return;
   try{await grist.docApi.applyUserActions([["RemoveRecord",TABLE_SUIVI,l.id]]);await chargerDonnees();}
   catch(e){alert("Suppression refusée par Grist.\n\n"+(e.message||e));}
 }
 async function refuserSuppression(l){
   if(!estReferentDeLigne(l)||l.SuppressionDemandee!==true){alert("Vous ne pouvez pas traiter cette demande.");return;}
-  if(!confirm("Refuser cette demande de suppression ?"))return;
+  if(!await boiteConfirmation("Refuser cette demande de suppression ?"))return;
   try{await grist.docApi.applyUserActions([["UpdateRecord",TABLE_SUIVI,l.id,{SuppressionDemandee:false}]]);await chargerDonnees();}
   catch(e){alert("Refus impossible.\n\n"+(e.message||e));}
 }
