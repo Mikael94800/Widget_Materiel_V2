@@ -628,7 +628,7 @@ async function creerReservationReferent(){
   msg.className="";msg.textContent="";
   if(!currentUserRecord||currentUserRecord.ReferentMateriel!==true){msg.className="error";msg.textContent="Fonction réservée aux référents.";return;}
   const id=Number($("reservation-materiel").value),q=Number($("reservation-quantite").value),m=materielParId(id);
-  const champsComplets=verifierChampsObligatoires(["reservation-materiel","reservation-quantite","reservation-debut","reservation-fin","reservation-details"]);
+  const champsComplets=verifierChampsObligatoires(["reservation-materiel","reservation-quantite","reservation-debut-date","reservation-debut-time","reservation-fin-date","reservation-fin-time","reservation-details"]);
   if(!champsComplets){msg.className="error";msg.textContent="Certaines informations obligatoires sont à compléter.";return;}
   if(!m||!materielDuService(m)||!dt.ok||!Number.isInteger(q)||q<1){msg.className="error";msg.textContent="Vérifiez le matériel, les dates et la quantité.";return;}
   btn.disabled=true;
