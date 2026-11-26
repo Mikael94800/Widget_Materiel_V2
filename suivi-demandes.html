@@ -12,8 +12,14 @@ h2{margin:0;font-size:21px}h3{font-size:20px;margin:0 0 16px}.panel{background:#
 .page-header{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:18px}.page-header #identity{margin:0 0 0 auto;max-width:min(620px,65%);text-align:right;padding:9px 13px;font-size:13px}
 .grid{display:grid;grid-template-columns:minmax(130px,170px) minmax(220px,270px);gap:14px;align-items:start}.field{display:flex;flex-direction:column;gap:7px;margin-bottom:15px}label{font-size:15px;font-weight:bold}
 input,select,textarea{width:100%;border:1px solid var(--border);border-radius:7px;padding:11px;font:inherit;background:#fff}textarea{min-height:70px;resize:vertical}
-#materiel{max-width:520px}#quantite{max-width:130px}#debut,#fin{max-width:270px;cursor:pointer;position:relative}
-input[type="datetime-local"]::-webkit-calendar-picker-indicator{position:absolute;inset:0;width:auto;height:auto;opacity:0;cursor:pointer}
+#materiel{max-width:520px}#quantite{max-width:130px}
+.date-time-group{display:flex;gap:8px;align-items:stretch;max-width:390px}.date-picker-wrap{position:relative;flex:1;min-width:0}
+.date-picker-wrap>input{width:100%;max-width:none;cursor:pointer;background:#fff}.date-time-group>input[type="time"]{width:125px;flex:0 0 125px}
+.custom-date-calendar{position:absolute;z-index:500;top:calc(100% + 5px);left:0;width:280px;padding:12px;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 30px rgba(25,40,65,.18)}
+.custom-date-calendar[hidden]{display:none}.date-calendar-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px}.date-calendar-head strong{text-transform:capitalize;font-size:14px}.date-calendar-head button{padding:6px 10px}
+.date-calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}.date-calendar-weekday{text-align:center;font-size:11px;color:var(--muted);padding:4px 0}
+.date-calendar-day{padding:7px 2px;border-radius:6px;background:#f4f6fa;color:var(--text);font-size:12px}.date-calendar-day:hover{background:#e5ebff}.date-calendar-day.selected{background:var(--blue);color:#fff}.date-calendar-day.today{outline:1px solid var(--blue)}.date-calendar-day.outside{visibility:hidden}
+@media(max-width:650px){.date-time-group{max-width:100%}.date-time-group>input[type="time"]{width:115px;flex-basis:115px}.custom-date-calendar{width:min(280px,calc(100vw - 48px))}}
 button{border:0;border-radius:7px;padding:10px 14px;cursor:pointer;font-weight:bold}button:disabled{opacity:.45;cursor:not-allowed}.primary{background:var(--blue);color:white}.success{background:#d8f3e5;color:#126b47}.danger{background:#fde3e3;color:#a72b35}.neutral{background:#edf2ff;color:#2945a6}
 .info,.error,.ok{padding:12px;border-radius:8px;margin:10px 0;font-size:14px}.info{background:#edf2ff}.error{background:#fde8e8;color:#a72b35}.ok{background:#e2f5eb;color:#126b47}.small{font-size:12px;color:var(--muted)}
 .field-incomplete input,.field-incomplete select,.field-incomplete textarea{border:2px solid var(--red)!important;background:#fff7f7}
@@ -44,8 +50,8 @@ button{border:0;border-radius:7px;padding:10px 14px;cursor:pointer;font-weight:b
 <div class="field"><label for="materiel">Matériel à ajouter</label><select id="materiel"><option value="">Chargement du catalogue…</option></select></div>
 <div class="grid">
 <div class="field"><label for="quantite">Quantité</label><input id="quantite" type="number" min="1" step="1" value="1"></div>
-<div class="field"><label for="debut">Début du prêt</label><input id="debut" type="datetime-local"></div>
-<div class="field"><label for="fin">Fin du prêt</label><input id="fin" type="datetime-local"></div>
+<div class="field"><label for="debut">Début du prêt</label><div class="date-time-group"><div class="date-picker-wrap" id="debut-picker"><input id="debut" type="text" readonly placeholder="Choisir une date" aria-label="Date de début"><div class="custom-date-calendar" hidden></div></div><input id="debut-heure" type="time" value="09:00" aria-label="Heure de début"></div></div>
+<div class="field"><label for="fin">Fin du prêt</label><div class="date-time-group"><div class="date-picker-wrap" id="fin-picker"><input id="fin" type="text" readonly placeholder="Choisir une date" aria-label="Date de fin"><div class="custom-date-calendar" hidden></div></div><input id="fin-heure" type="time" value="17:00" aria-label="Heure de fin"></div></div>
 </div>
 <div class="actions"><button id="ajouter" class="neutral" type="button" disabled>Ajouter le matériel à la demande</button></div>
 <div id="disponibilite" class="info">Sélectionnez un matériel et une période.</div>
@@ -244,10 +250,17 @@ function afficherCatalogue(){
   materiels.filter(materielAutorisePourUtilisateur).forEach(m=>{const o=document.createElement("option");o.value=m.id;o.textContent=`${m.Materiel||"Matériel sans nom"} (stock total : ${m.Quantite??0})`;s.appendChild(o);});
   if(s.options.length===1){const o=document.createElement("option");o.disabled=true;o.textContent="Aucun matériel n'est proposé à votre service.";s.appendChild(o);}
 }
+function dateHeureEnSecondes(dateValue,timeValue){
+  if(!dateValue||!timeValue)return NaN;
+  const [y,m,d]=dateValue.split("-").map(Number),[h,min]=timeValue.split(":").map(Number);
+  return new Date(y,m-1,d,h,min,0,0).getTime()/1000;
+}
 function datesFormulaire(){
-  if(!$("debut").value||!$("fin").value)return {ok:false,message:"Renseignez les dates et heures de début et de fin."};
-  const debut=dateSecondes($("debut").value),fin=dateSecondes($("fin").value);
-  if(!Number.isFinite(debut)||!Number.isFinite(fin))return {ok:false,message:"Date invalide."};
+  const dateDebut=$("debut").dataset.iso,dateFin=$("fin").dataset.iso;
+  const heureDebut=$("debut-heure").value,heureFin=$("fin-heure").value;
+  if(!dateDebut||!dateFin||!heureDebut||!heureFin)return {ok:false,message:"Renseignez les dates et heures de début et de fin."};
+  const debut=dateHeureEnSecondes(dateDebut,heureDebut),fin=dateHeureEnSecondes(dateFin,heureFin);
+  if(!Number.isFinite(debut)||!Number.isFinite(fin))return {ok:false,message:"Date ou heure invalide."};
   if(debut<Date.now()/1000)return {ok:false,message:"La date de début ne peut pas être dans le passé."};
   if(fin<=debut)return {ok:false,message:"La fin doit être postérieure au début."};
   return {ok:true,debut,fin};
@@ -274,7 +287,7 @@ function afficherPanier(){
 }
 function ajouterAuPanier(){
   const id=Number($("materiel").value),q=Number($("quantite").value),dt=datesFormulaire();
-  if(!verifierChampsObligatoires(["materiel","quantite","debut","fin"])){verifierFormulaire();return;}
+  if(!verifierChampsObligatoires(["materiel","quantite","debut","debut-heure","fin","fin-heure"])){verifierFormulaire();return;}
   if(!dt.ok||!Number.isInteger(q)||q<1||!id){verifierFormulaire();return;}
   const m=materielParId(id);if(!m||!materielAutorisePourUtilisateur(m)){verifierFormulaire();return;}
   const old=panier.find(x=>Number(x.materielId)===id),already=old?old.quantite:0,available=stockDisponible(id,dt.debut,dt.fin);
@@ -313,7 +326,7 @@ function effacerZoneIncomplete(id){
 }
 async function envoyerDemande(){
   const msg=$("message"),btn=$("envoyer"),dt=datesFormulaire();msg.className="";msg.textContent="";
-  const champsComplets=verifierChampsObligatoires(["debut","fin","details"]);
+  const champsComplets=verifierChampsObligatoires(["debut","debut-heure","fin","fin-heure","details"]);
   if(!panier.length)marquerZoneIncomplete("panier");else effacerZoneIncomplete("panier");
   if(!currentUserRecord||!panier.length||!champsComplets||!dt.ok){msg.className="error";msg.textContent=!currentUserRecord?"Profil introuvable.":!panier.length?"Ajoutez au moins un matériel.":!champsComplets?"Certaines informations obligatoires sont à compléter.":dt.message;return;}
   btn.disabled=true;let parentId=null;
@@ -358,7 +371,7 @@ async function envoyerDemande(){
       );
     }
 
-    msg.className="ok";msg.textContent=`Demande ${fields.IdDemande} enregistrée avec ${panier.length} ligne(s) de matériel.`;panier=[];$("details").value="";$("debut").value="";$("fin").value="";$("materiel").value="";$("quantite").value=1;await chargerDonnees();
+    msg.className="ok";msg.textContent=`Demande ${fields.IdDemande} enregistrée avec ${panier.length} ligne(s) de matériel.`;panier=[];$("details").value="";$("debut").value="";$("debut").dataset.iso="";$("debut-heure").value="09:00";$("fin").value="";$("fin").dataset.iso="";$("fin-heure").value="17:00";$("materiel").value="";$("quantite").value=1;await chargerDonnees();
   }catch(e){msg.className="error";msg.textContent="Enregistrement interrompu : "+(e.message||e)+(parentId!=null?" Vérifiez les lignes de SUIVI_DEMANDES avant de relancer.":"");btn.disabled=false;}
 }
 function creerBlocTitre(titre,sous=""){const b=document.createElement("div");b.className="request";const h=document.createElement("div");h.className="request-header";const s=document.createElement("strong");s.textContent=titre;h.appendChild(s);if(sous){const small=document.createElement("span");small.className="small";small.textContent=sous;h.appendChild(small);}b.appendChild(h);return b;}
@@ -622,19 +635,36 @@ async function refuserSuppression(l){
   try{await grist.docApi.applyUserActions([["UpdateRecord",TABLE_SUIVI,l.id,{SuppressionDemandee:false}]]);await chargerDonnees();}
   catch(e){boiteInformation("Refus impossible.\n\n"+(e.message||e));}
 }
-function actualiserMinimumDate(){const n=new Date(),local=new Date(n.getTime()-n.getTimezoneOffset()*60000).toISOString().slice(0,16);$("debut").min=local;$("fin").min=local;}
-["debut","fin"].forEach(id=>{
-  const input=$(id);
-  const ouvrirCalendrier=()=>{
-    if(typeof input.showPicker==="function"){
-      try{input.showPicker();}catch(_){}
-    }
+["materiel","quantite","debut-heure","fin-heure"].forEach(id=>{$(id).addEventListener("change",verifierFormulaire);$(id).addEventListener("input",verifierFormulaire);});
+["debut","fin"].forEach(id=>$(id).addEventListener("change",verifierFormulaire));
+installerValidationChamps(["materiel","quantite","debut","debut-heure","fin","fin-heure","details"]);
+installerCalendriersDemande();
+function installerCalendriersDemande(){
+ const nomsMois=["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"],jours=["L","M","M","J","V","S","D"];
+ ["debut","fin"].forEach(id=>{
+  const wrap=$(id+"-picker"),input=$(id),popup=wrap.querySelector(".custom-date-calendar");let moisAffiche=new Date();moisAffiche.setDate(1);
+  const isoLocal=d=>[d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("-");
+  const afficher=()=>{
+   popup.innerHTML="";const head=document.createElement("div");head.className="date-calendar-head";
+   const prev=document.createElement("button");prev.type="button";prev.className="neutral";prev.textContent="‹";
+   const titre=document.createElement("strong");titre.textContent=nomsMois[moisAffiche.getMonth()]+" "+moisAffiche.getFullYear();
+   const next=document.createElement("button");next.type="button";next.className="neutral";next.textContent="›";
+   prev.addEventListener("click",()=>{moisAffiche.setMonth(moisAffiche.getMonth()-1);afficher();});next.addEventListener("click",()=>{moisAffiche.setMonth(moisAffiche.getMonth()+1);afficher();});
+   head.append(prev,titre,next);popup.appendChild(head);const grid=document.createElement("div");grid.className="date-calendar-grid";
+   jours.forEach(j=>{const el=document.createElement("div");el.className="date-calendar-weekday";el.textContent=j;grid.appendChild(el);});
+   const offset=(new Date(moisAffiche.getFullYear(),moisAffiche.getMonth(),1).getDay()+6)%7,nb=new Date(moisAffiche.getFullYear(),moisAffiche.getMonth()+1,0).getDate();
+   for(let i=0;i<offset;i++){const blank=document.createElement("div");blank.className="date-calendar-day outside";grid.appendChild(blank);}
+   for(let day=1;day<=nb;day++){const d=new Date(moisAffiche.getFullYear(),moisAffiche.getMonth(),day),iso=isoLocal(d),btn=document.createElement("button");btn.type="button";btn.className="date-calendar-day";btn.textContent=String(day);
+    if(input.dataset.iso===iso)btn.classList.add("selected");if(iso===isoLocal(new Date()))btn.classList.add("today");
+    btn.addEventListener("click",()=>{input.dataset.iso=iso;input.value=d.toLocaleDateString("fr-FR");popup.hidden=true;input.dispatchEvent(new Event("change",{bubbles:true}));});grid.appendChild(btn);}
+   popup.appendChild(grid);
   };
-  input.addEventListener("click",ouvrirCalendrier);
-  input.addEventListener("pointerdown",ouvrirCalendrier);
-});
-["materiel","quantite","debut","fin"].forEach(id=>{ $(id).addEventListener("change",()=>{actualiserMinimumDate();verifierFormulaire();});$(id).addEventListener("input",()=>{actualiserMinimumDate();verifierFormulaire();}); });
-installerValidationChamps(["materiel","quantite","debut","fin","details"]);
+  input.addEventListener("click",()=>{const selected=input.dataset.iso;if(selected){const [y,m]=selected.split("-").map(Number);moisAffiche=new Date(y,m-1,1);}afficher();popup.hidden=!popup.hidden;});
+  input.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();input.click();}if(e.key==="Escape")popup.hidden=true;});
+  input.tabIndex=0;input.setAttribute("role","button");input.setAttribute("aria-haspopup","dialog");
+  document.addEventListener("pointerdown",e=>{if(!wrap.contains(e.target))popup.hidden=true;});
+ });
+}
 $("ajouter").addEventListener("click",ajouterAuPanier);$("envoyer").addEventListener("click",envoyerDemande);
 ["filtre-historique","historique-date-debut","historique-date-fin","historique-materiel"].forEach(id=>$(id).addEventListener("change",afficherHistoriqueDemandes));
 $("historique-reinitialiser").addEventListener("click",()=>{
