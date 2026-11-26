@@ -42,8 +42,23 @@ button{border:0;border-radius:7px;padding:10px 14px;cursor:pointer;font-weight:b
 .reservation-form label{font-size:15px}
 #reservation-materiel{max-width:520px}
 #reservation-quantite{max-width:130px}
-#reservation-debut,#reservation-fin{max-width:270px;cursor:pointer;position:relative}
-/* Conserver le pictogramme natif : ne pas étendre sa zone cliquable sur tout le champ. */
+.date-time-group{display:flex;gap:8px;align-items:stretch;max-width:390px}
+.date-picker-wrap{position:relative;flex:1;min-width:0}
+.date-picker-wrap>input{width:100%;max-width:none;cursor:pointer;background:#fff}
+.date-time-group>input[type="time"]{width:125px;flex:0 0 125px}
+.custom-date-calendar{position:absolute;z-index:500;top:calc(100% + 5px);left:0;width:280px;padding:12px;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 30px rgba(25,40,65,.18)}
+.custom-date-calendar[hidden]{display:none}
+.date-calendar-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px}
+.date-calendar-head strong{text-transform:capitalize;font-size:14px}
+.date-calendar-head button{padding:6px 10px}
+.date-calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
+.date-calendar-weekday{text-align:center;font-size:11px;color:var(--muted);padding:4px 0}
+.date-calendar-day{padding:7px 2px;border-radius:6px;background:#f4f6fa;color:var(--text);font-size:12px}
+.date-calendar-day:hover{background:#e5ebff}
+.date-calendar-day.selected{background:var(--blue);color:#fff}
+.date-calendar-day.today{outline:1px solid var(--blue)}
+.date-calendar-day.outside{visibility:hidden}
+@media(max-width:650px){.date-time-group{max-width:100%}.date-time-group>input[type="time"]{width:115px;flex-basis:115px}.custom-date-calendar{width:min(280px,calc(100vw - 48px))}}
 @media(max-width:650px){.reservation-form .grid{grid-template-columns:1fr}}
 
 .app-dialog-overlay{position:fixed;inset:0;z-index:10000;background:rgba(18,28,45,.48);display:flex;align-items:center;justify-content:center;padding:18px}
@@ -70,8 +85,8 @@ button{border:0;border-radius:7px;padding:10px 14px;cursor:pointer;font-weight:b
 <div class="field"><label for="reservation-materiel">Matériel à ajouter</label><select id="reservation-materiel"><option value="">Chargement…</option></select></div>
 <div class="grid">
 <div class="field"><label for="reservation-quantite">Quantité</label><input id="reservation-quantite" type="number" min="1" step="1" value="1"></div>
-<div class="field"><label for="reservation-debut">Début du prêt</label><input id="reservation-debut" type="datetime-local"></div>
-<div class="field"><label for="reservation-fin">Fin du prêt</label><input id="reservation-fin" type="datetime-local"></div>
+<div class="field"><label>Début du prêt</label><div class="date-time-group"><div class="date-picker-wrap" id="reservation-debut-picker"><input id="reservation-debut-date" type="text" placeholder="Choisir une date" readonly aria-label="Date de début du prêt"><div class="custom-date-calendar" hidden></div></div><input id="reservation-debut-time" type="time" aria-label="Heure de début du prêt" value="09:00"></div></div>
+<div class="field"><label>Fin du prêt</label><div class="date-time-group"><div class="date-picker-wrap" id="reservation-fin-picker"><input id="reservation-fin-date" type="text" placeholder="Choisir une date" readonly aria-label="Date de fin du prêt"><div class="custom-date-calendar" hidden></div></div><input id="reservation-fin-time" type="time" aria-label="Heure de fin du prêt" value="17:00"></div></div>
 </div>
 <div class="field"><label for="reservation-details">Motif / utilisation prévue</label><textarea id="reservation-details" placeholder="Précisez l'utilisation prévue…"></textarea></div>
 <div id="reservation-disponibilite" class="info">Sélectionnez un matériel et une période.</div>
@@ -557,11 +572,18 @@ function afficherCatalogueReservation(){
   materiels.filter(materielDuService).forEach(m=>{const o=document.createElement("option");o.value=m.id;o.textContent=`${m.Materiel||"Matériel sans nom"} (stock : ${m.Quantite??0})`;s.appendChild(o);});
   if(s.options.length===1){const o=document.createElement("option");o.disabled=true;o.textContent="Aucun matériel rattaché à votre service.";s.appendChild(o);}
 }
+function dateHeureEnSecondes(dateValue,timeValue){
+  if(!dateValue||!timeValue)return NaN;
+  const [y,m,d]=dateValue.split("-").map(Number),[h,min]=timeValue.split(":").map(Number);
+  return new Date(y,m-1,d,h,min,0,0).getTime()/1000;
+}
 function datesReservation(){
-  if(!$("reservation-debut").value||!$("reservation-fin").value)return {ok:false,message:"Renseignez les dates et heures."};
-  const debut=dateSecondes($("reservation-debut").value),fin=dateSecondes($("reservation-fin").value);
-  if(!Number.isFinite(debut)||!Number.isFinite(fin))return {ok:false,message:"Dates invalides."};
-  if(debut<Date.now()/1000)return {ok:false,message:"La date de début ne peut pas être dans le passé."};
+  const debutDate=$("reservation-debut-date").dataset.iso||"",finDate=$("reservation-fin-date").dataset.iso||"";
+  const debut=dateHeureEnSecondes(debutDate,$("reservation-debut-time").value);
+  const fin=dateHeureEnSecondes(finDate,$("reservation-fin-time").value);
+  if(!debutDate||!finDate||!$("reservation-debut-time").value||!$("reservation-fin-time").value)return {ok:false,message:"Renseignez les dates et les heures."};
+  if(!Number.isFinite(debut)||!Number.isFinite(fin))return {ok:false,message:"Dates ou heures invalides."};
+  if(debut<Date.now()/1000)return {ok:false,message:"La date et l'heure de début ne peuvent pas être dans le passé."};
   if(fin<=debut)return {ok:false,message:"La fin doit être postérieure au début."};
   return {ok:true,debut,fin};
 }
@@ -620,7 +642,7 @@ async function creerReservationReferent(){
     if(parentId==null)throw Error("La demande a été créée mais son identifiant n'a pas pu être retrouvé. Vérifiez DEMANDES avant de recommencer.");
     await grist.docApi.applyUserActions([["AddRecord",TABLE_SUIVI,null,{Demande:parentId,Materiel:id,Quantite:q,StatutDemande:"Validée"}]]);
     msg.className="ok";msg.textContent="Réservation enregistrée et automatiquement validée.";
-    $("reservation-details").value="";$("reservation-debut").value="";$("reservation-fin").value="";$("reservation-materiel").value="";$("reservation-quantite").value=1;
+    $("reservation-details").value="";["reservation-debut","reservation-fin"].forEach(prefix=>{const date=$(prefix+"-date");date.value="";delete date.dataset.iso;$(prefix+"-time").value=prefix==="reservation-debut"?"09:00":"17:00";});$("reservation-materiel").value="";$("reservation-quantite").value=1;
     await chargerDonnees();
   }catch(e){msg.className="error";msg.textContent="Réservation non finalisée : "+(e.message||e);btn.disabled=false;}
 }
@@ -783,19 +805,52 @@ async function annulerLigne(l){
   }
 }
 
-function actualiserMinimumDate(){const n=new Date(),local=new Date(n.getTime()-n.getTimezoneOffset()*60000).toISOString().slice(0,16);$("debut").min=local;$("fin").min=local;}
-["reservation-materiel","reservation-quantite","reservation-debut","reservation-fin"].forEach(id=>{ $(id).addEventListener("change",verifierReservation);$(id).addEventListener("input",verifierReservation); });
-["reservation-debut","reservation-fin"].forEach(id=>{
-  const champ=$(id);
-  // Ouvrir le sélecteur dès l'appui, quelle que soit la zone du champ.
-  // showPicker() doit être appelé directement pendant l'interaction utilisateur.
-  champ.addEventListener("pointerdown",()=>{
-    if(typeof champ.showPicker==="function"){
-      try{champ.showPicker();}catch(_){}
-    }
-  });
+function actualiserMinimumDate(){}
+["reservation-materiel","reservation-quantite","reservation-debut-date","reservation-debut-time","reservation-fin-date","reservation-fin-time"].forEach(id=>{
+  $(id).addEventListener("change",()=>{verifierReservation();if($(id).type==="time"&&$(id).value)effacerChampIncomplet(id);});
+  $(id).addEventListener("input",verifierReservation);
 });
-installerValidationChamps(["reservation-materiel","reservation-quantite","reservation-debut","reservation-fin","reservation-details"]);
+installerValidationChamps(["reservation-materiel","reservation-quantite","reservation-details"]);
+installerCalendriersReservation();
+function installerCalendriersReservation(){
+  const nomsMois=["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+  const jours=["L","M","M","J","V","S","D"];
+  ["reservation-debut","reservation-fin"].forEach(prefix=>{
+    const wrap=$(prefix+"-picker"),input=$(prefix+"-date"),popup=wrap.querySelector(".custom-date-calendar");
+    let moisAffiche=new Date();moisAffiche.setDate(1);
+    const isoLocal=d=>[d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("-");
+    const afficher=()=>{
+      popup.innerHTML="";
+      const head=document.createElement("div");head.className="date-calendar-head";
+      const prev=document.createElement("button");prev.type="button";prev.className="neutral";prev.textContent="‹";
+      const titre=document.createElement("strong");titre.textContent=nomsMois[moisAffiche.getMonth()]+" "+moisAffiche.getFullYear();
+      const next=document.createElement("button");next.type="button";next.className="neutral";next.textContent="›";
+      prev.addEventListener("click",()=>{moisAffiche.setMonth(moisAffiche.getMonth()-1);afficher();});
+      next.addEventListener("click",()=>{moisAffiche.setMonth(moisAffiche.getMonth()+1);afficher();});
+      head.append(prev,titre,next);popup.appendChild(head);
+      const grid=document.createElement("div");grid.className="date-calendar-grid";
+      jours.forEach(j=>{const el=document.createElement("div");el.className="date-calendar-weekday";el.textContent=j;grid.appendChild(el);});
+      const offset=(new Date(moisAffiche.getFullYear(),moisAffiche.getMonth(),1).getDay()+6)%7;
+      const nb=new Date(moisAffiche.getFullYear(),moisAffiche.getMonth()+1,0).getDate();
+      for(let i=0;i<offset;i++){const blank=document.createElement("div");blank.className="date-calendar-day outside";grid.appendChild(blank);}
+      for(let day=1;day<=nb;day++){
+        const d=new Date(moisAffiche.getFullYear(),moisAffiche.getMonth(),day),iso=isoLocal(d),btn=document.createElement("button");
+        btn.type="button";btn.className="date-calendar-day";btn.textContent=String(day);
+        if(input.dataset.iso===iso)btn.classList.add("selected");
+        if(iso===isoLocal(new Date()))btn.classList.add("today");
+        btn.addEventListener("click",()=>{input.dataset.iso=iso;input.value=d.toLocaleDateString("fr-FR");popup.hidden=true;input.dispatchEvent(new Event("change",{bubbles:true}));});
+        grid.appendChild(btn);
+      }
+      popup.appendChild(grid);
+    };
+    input.addEventListener("click",()=>{const selected=input.dataset.iso;if(selected){const [y,m]=selected.split("-").map(Number);moisAffiche=new Date(y,m-1,1);}afficher();popup.hidden=!popup.hidden;});
+    input.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();input.click();}if(e.key==="Escape")popup.hidden=true;});
+    input.tabIndex=0;
+    input.setAttribute("role","button");
+    input.setAttribute("aria-haspopup","dialog");
+    document.addEventListener("pointerdown",e=>{if(!wrap.contains(e.target))popup.hidden=true;});
+  });
+}
 $("reservation-enregistrer").addEventListener("click",creerReservationReferent);
 $("calendrier-precedent").addEventListener("click",()=>decalageCalendrier(-1));
 $("calendrier-suivant").addEventListener("click",()=>decalageCalendrier(1));
