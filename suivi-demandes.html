@@ -262,7 +262,14 @@ function creerCarteDemande(d,items,historique=false){
 
   const status=document.createElement("div");
   status.className="request-status";
-  status.textContent=d.StatutGlobal||"En cours";
+  // L'encart reflète les statuts des lignes de SUIVI_DEMANDES,
+  // et non le statut global de la demande parente.
+  const statutsLignes=[...new Set(items.map(l=>String(l.StatutDemande||"").trim()).filter(Boolean))];
+  status.textContent=statutsLignes.length===0
+    ?"Statut non renseigné"
+    :statutsLignes.length===1
+      ?statutsLignes[0]
+      :statutsLignes.join(" / ");
   header.append(materials,status);
   card.appendChild(header);
 
