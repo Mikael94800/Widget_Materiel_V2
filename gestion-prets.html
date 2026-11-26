@@ -14,6 +14,20 @@ input,select,textarea{width:100%;border:1px solid var(--border);border-radius:7p
 button{border:0;border-radius:7px;padding:10px 14px;cursor:pointer;font-weight:bold}button:disabled{opacity:.45;cursor:not-allowed}.primary{background:var(--blue);color:white}.success{background:#d8f3e5;color:#126b47}.danger{background:#fde3e3;color:#a72b35}.neutral{background:#edf2ff;color:#2945a6}
 .info,.error,.ok{padding:12px;border-radius:8px;margin:10px 0;font-size:14px}.info{background:#edf2ff}.error{background:#fde8e8;color:#a72b35}.ok{background:#e2f5eb;color:#126b47}.small{font-size:12px;color:var(--muted)}
 .request{border:1px solid var(--border);padding:15px;border-radius:10px;margin:10px 0;background:#fff;box-shadow:0 2px 8px rgba(35,52,80,.04)}.history-panel{margin-top:24px}.history-panel details>summary{cursor:pointer;font-weight:bold;font-size:17px;list-style-position:inside;padding:4px 0 12px}.history-group{padding:14px 0;border-top:1px solid var(--border)}.history-group h3{margin-bottom:8px}.panel-attention{border-left:4px solid #d69a24}.panel-attention .actions button{padding:12px 18px;font-size:14px}.calendar-panel{margin-top:24px}.request-header{display:flex;justify-content:space-between;gap:12px;margin-bottom:8px;align-items:flex-start}.actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center}.cart-line{display:grid;grid-template-columns:minmax(0,1fr) 100px auto;gap:9px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}.empty{color:var(--muted);font-size:14px;padding:10px 0}.status-pill{display:inline-flex;align-items:center;flex:0 0 auto;border-radius:999px;padding:5px 11px;font-size:12px;line-height:1.2;font-weight:750;white-space:nowrap}.status-attente{background:#fff0cc;color:#875600}.status-validee{background:#d8f3e5;color:#126b47}.status-refusee{background:#fde3e3;color:#a72b35}.status-pretee{background:#dce8ff;color:#2945a6}.status-restituee{background:#ccebdd;color:#145b43}.status-annulee{background:#edf0f4;color:#596579}.status-inconnu{background:#edf0f4;color:#596579}.history-line{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 0;border-top:1px solid #edf0f4}.history-line-main{min-width:0}.history-line-title{font-weight:600}.history-meta{font-size:12px;color:var(--muted);margin-top:3px}.history-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;padding:14px 0 18px;border-bottom:1px solid var(--border);margin-bottom:8px}.history-controls .field{margin:0}.history-controls label{display:block;margin-bottom:5px}.history-controls select,.history-controls input{padding:9px;font-size:13px}.global-status{display:inline-flex;align-items:center;width:fit-content;font-size:11px;color:#596579;font-weight:600;background:#f1f3f6;padding:4px 9px;border-radius:6px;white-space:nowrap}
+.history-table-wrap{overflow-x:auto;margin-top:10px;border:1px solid var(--border);border-radius:8px}
+.history-table{width:100%;border-collapse:collapse;background:#fff;min-width:720px}
+.history-table th{background:#f3f5f9;text-align:left;font-size:12px;color:#4b5870;white-space:nowrap}
+.history-table th button{background:transparent;color:inherit;padding:11px 10px;text-align:left;width:100%;border-radius:0}
+.history-table td{padding:11px 10px;border-top:1px solid #edf0f4;font-size:13px;vertical-align:middle}
+.history-table tbody tr{cursor:pointer}
+.history-table tbody tr:hover{background:#f5f7ff}
+.history-table tbody tr:focus{outline:2px solid var(--blue);outline-offset:-2px}
+.history-detail{margin-top:16px;padding:16px;border:1px solid var(--border);border-radius:10px;background:#f9faff}
+.history-detail h4{margin:0 0 10px;font-size:16px}
+.history-detail-line{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-top:1px solid var(--border);align-items:center}
+.history-detail-line>div{min-width:0}
+.history-detail-meta{font-size:12px;color:var(--muted);margin-top:4px}
+
 @media(max-width:650px){body{padding:12px}.grid{grid-template-columns:1fr}.cart-line{grid-template-columns:1fr 85px}.cart-line button{grid-column:1/-1}}
 </style></head>
 <body>
@@ -43,20 +57,26 @@ button{border:0;border-radius:7px;padding:10px 14px;cursor:pointer;font-weight:b
 <section class="panel"><h3>Demandes à traiter par mon service prêteur</h3><p class="small">Les demandes qui attendent encore une décision sur un matériel de votre service.</p><div id="a-traiter">Chargement…</div></section>
 <section class="panel"><h3>Prêts en cours et restitutions</h3><p class="small">Matériels validés, remis ou en attente de restitution.</p><div id="prets-en-cours">Chargement…</div></section>
 <section class="panel panel-attention"><h3>Demandes annulées par les emprunteurs</h3><p class="small">Après vérification, archivez la demande pour la retirer de votre vue courante. Elle restera consultable dans l'historique.</p><div id="annulations-a-archiver">Chargement…</div></section>
-<section class="panel history-panel"><details open><summary>Historique des demandes</summary>
+<section class="panel history-panel"><h3>Historique des demandes</h3>
+<p class="small">Une ligne par matériel demandé. Cliquez sur une ligne pour consulter la fiche complète de la demande.</p>
 <div class="history-controls">
-  <div class="field"><label for="historique-statut">Catégorie</label><select id="historique-statut"><option value="">Toutes les catégories</option><option value="cloturees">Demandes clôturées</option><option value="annulees">Demandes annulées par les emprunteurs</option><option value="archivees">Demandes archivées / supprimées</option><option value="refusees">Prêt non accordé</option></select></div>
+  <div class="field"><label for="historique-statut">Catégorie</label><select id="historique-statut"><option value="">Toutes les catégories</option><option value="cloturees">Demandes clôturées</option><option value="annulees">Demandes annulées par les emprunteurs</option><option value="archivees">Demandes archivées</option><option value="refusees">Prêt non accordé</option></select></div>
   <div class="field"><label for="historique-date-debut">Date de demande — du</label><input id="historique-date-debut" type="date"></div>
   <div class="field"><label for="historique-date-fin">Date de demande — au</label><input id="historique-date-fin" type="date"></div>
   <div class="field"><label for="historique-materiel">Matériel</label><select id="historique-materiel"><option value="">Tous les matériels</option></select></div>
   <div class="field"><label for="historique-demandeur">Demandeur</label><select id="historique-demandeur"><option value="">Tous les demandeurs</option></select></div>
   <div class="field"><label>&nbsp;</label><button type="button" class="neutral" id="historique-reinitialiser">Réinitialiser les filtres</button></div>
 </div>
-<div class="history-group"><h3>Demandes clôturées</h3><div id="historique-cloturees">Chargement…</div></div>
-<div class="history-group"><h3>Demandes annulées par les emprunteurs</h3><div id="historique-annulees">Chargement…</div></div>
-<div class="history-group"><h3>Demandes archivées / supprimées</h3><div id="historique-archivees">Chargement…</div></div>
-<div class="history-group"><h3>Prêt non accordé</h3><div id="historique-refusees">Chargement…</div></div>
-</details></section>
+<div class="history-table-wrap"><table class="history-table"><thead><tr>
+<th><button type="button" data-history-sort="demandeur">Demandeur ↕</button></th>
+<th><button type="button" data-history-sort="materiel">Matériel ↕</button></th>
+<th><button type="button" data-history-sort="categorie">Catégorie ↕</button></th>
+<th><button type="button" data-history-sort="date">Date de demande ↕</button></th>
+<th><button type="button" data-history-sort="statut">Statut ↕</button></th>
+</tr></thead><tbody id="historique-resultats"><tr><td colspan="5" class="empty">Chargement…</td></tr></tbody></table></div>
+<div id="historique-compteur" class="small" style="margin-top:8px"></div>
+<div id="historique-fiche" class="history-detail" hidden></div>
+</section>
 <section class="panel calendar-panel">
 <div class="request-header"><h3>Calendrier de mobilisation du matériel</h3><div class="field"><label for="calendrier-mois">Mois</label><input id="calendrier-mois" type="month"></div></div>
 <p class="small">Calendrier limité au matériel de votre service. Les demandes en attente, réservations validées et prêts en cours sont distingués.</p>
@@ -65,7 +85,7 @@ button{border:0;border-radius:7px;padding:10px 14px;cursor:pointer;font-weight:b
 
 
 <script>
-const VERSION_WIDGET="1.3.0";
+const VERSION_WIDGET="1.4.0";
 const TABLE_MATERIEL="MATERIEL",TABLE_UTILISATEURS="Utilisateurs",TABLE_IDENTIFICATION="Identification",TABLE_DEMANDES="DEMANDES",TABLE_SUIVI="SUIVI_DEMANDES";
 const STATUTS_RESERVANTS=["En attente","Validée","Prêtée"];
 let materiels=[],utilisateurs=[],demandes=[],lignes=[],currentUserRecord=null,panier=[];
@@ -291,22 +311,6 @@ function creerBadgeStatut(statut){
   const classes={"En attente":"status-attente","Validée":"status-validee","Refusée":"status-refusee","Prêtée":"status-pretee","Restituée":"status-restituee","Annulée":"status-annulee"};
   badge.classList.add(classes[statut]||"status-inconnu");badge.textContent=statut||"Statut non renseigné";return badge;
 }
-function afficherCarteHistorique(zone,d,items,archivee=false){
-  const card=creerBlocTitre(d.IdDemande||`Demande n° ${d.id}`,`Emprunteur : ${nomUtilisateur(d.Demandeur)}`);
-  const global=document.createElement("span");global.className="global-status";global.textContent=d.StatutGlobal||"Statut global non renseigné";
-  card.querySelector(".request-header")?.append(global);
-  ajouterTexte(card,`Période : du ${afficherDate(d.DebutPret)} au ${afficherDate(d.FinPret)}`,"small");
-  items.forEach(l=>{
-    const m=materielParId(l.Materiel),line=document.createElement("div");line.className="history-line";
-    const main=document.createElement("div");main.className="history-line-main";
-    const name=document.createElement("div");name.className="history-line-title";name.textContent=`${l.Quantite||0} × ${m?m.Materiel:"Matériel inconnu"}`;
-    const meta=document.createElement("div");meta.className="history-meta";
-    meta.textContent=l.StatutDemande==="Annulée"?(l.MotifAnnulation||"Annulation par l'emprunteur"):(l.ObservationsRetourPreteur||"");
-    main.append(name,meta);line.append(main,creerBadgeStatut(l.StatutDemande));card.append(line);
-    if(archivee&&l.DateSuppressionDemande)ajouterTexte(card,`Archivée le ${afficherDate(l.DateSuppressionDemande)} par ${nomUtilisateur(l.AuteurDemandeSuppression)}`,"small");
-  });
-  zone.append(card);
-}
 function remplirSelectHistorique(id,options,placeholder){
   const select=$(id),old=select.value;
   select.innerHTML="";
@@ -319,44 +323,114 @@ function dateHistoriqueEnSecondes(value,fin=false){
   const d=new Date(value+(fin?"T23:59:59":"T00:00:00"));
   return d.getTime()/1000;
 }
+function categorieHistorique(l){
+  if(l.SuppressionDemande===true)return "archivees";
+  if(l.StatutDemande==="Annulée")return "annulees";
+  if(l.StatutDemande==="Refusée")return "refusees";
+  if(l.StatutDemande==="Restituée")return "cloturees";
+  return "";
+}
+function libelleCategorieHistorique(c){
+  return ({cloturees:"Demande clôturée",annulees:"Demande annulée",archivees:"Demande archivée",refusees:"Prêt non accordé"})[c]||c;
+}
+function dateDemandeHistorique(d){return Number(d.DateDemande||d.DebutPret||0);}
 function filtresHistoriqueReferent(d,l){
   const materiel=$("historique-materiel").value,demandeur=$("historique-demandeur").value;
   const dateDebut=dateHistoriqueEnSecondes($("historique-date-debut").value);
   const dateFin=dateHistoriqueEnSecondes($("historique-date-fin").value,true);
+  const categorie=$("historique-statut").value;
   if(demandeur&&String(d.Demandeur)!==demandeur)return false;
   if(materiel&&String(l.Materiel)!==materiel)return false;
-  const date=Number(d.DateDemande||d.DebutPret||0);
+  if(categorie&&categorieHistorique(l)!==categorie)return false;
+  const date=dateDemandeHistorique(d);
   if(dateDebut!==null&&date<dateDebut)return false;
   if(dateFin!==null&&date>dateFin)return false;
   return true;
 }
+let historiqueTri={colonne:"date",sens:-1};
+let historiqueLignesAffichees=[];
 function afficherHistoriqueReferent(){
-  const zones={cloturees:$("historique-cloturees"),annulees:$("historique-annulees"),archivees:$("historique-archivees"),refusees:$("historique-refusees")};
-  Object.values(zones).forEach(z=>z.innerHTML="");
-  const lignesHistoriques=[];
-  demandes.slice().sort((a,b)=>Number(b.id)-Number(a.id)).forEach(d=>{
+  const zone=$("historique-resultats"),fiche=$("historique-fiche");
+  if(!zone)return;
+  zone.innerHTML="";
+  historiqueLignesAffichees=[];
+  demandes.forEach(d=>{
     lignesDuReferentPourDemande(d).forEach(l=>{
-      let categorie="";
-      if(l.SuppressionDemande===true)categorie="archivees";
-      else if(l.StatutDemande==="Annulée")categorie="annulees";
-      else if(l.StatutDemande==="Refusée")categorie="refusees";
-      else if(l.StatutDemande==="Restituée")categorie="cloturees";
-      if(categorie&&filtresHistoriqueReferent(d,l))lignesHistoriques.push({d,l,categorie});
+      const categorie=categorieHistorique(l);
+      if(categorie&&filtresHistoriqueReferent(d,l))historiqueLignesAffichees.push({d,l,categorie});
     });
   });
-  const filtre=$("historique-statut").value,groupes={};
-  Object.keys(zones).forEach(k=>groupes[k]=new Map());
-  lignesHistoriques.filter(x=>!filtre||x.categorie===filtre).forEach(({d,l,categorie})=>{
-    if(!groupes[categorie].has(d.id))groupes[categorie].set(d.id,{demande:d,lignes:[]});
-    groupes[categorie].get(d.id).lignes.push(l);
+  const valeurTri=x=>{
+    const m=materielParId(x.l.Materiel);
+    if(historiqueTri.colonne==="demandeur")return nomUtilisateur(x.d.Demandeur).toLocaleLowerCase("fr");
+    if(historiqueTri.colonne==="materiel")return (m?.Materiel||"Matériel inconnu").toLocaleLowerCase("fr");
+    if(historiqueTri.colonne==="categorie")return libelleCategorieHistorique(x.categorie).toLocaleLowerCase("fr");
+    if(historiqueTri.colonne==="statut")return String(x.l.StatutDemande||"").toLocaleLowerCase("fr");
+    return dateDemandeHistorique(x.d);
+  };
+  historiqueLignesAffichees.sort((a,b)=>{
+    const va=valeurTri(a),vb=valeurTri(b);
+    const comparaison=typeof va==="number"&&typeof vb==="number"?va-vb:String(va).localeCompare(String(vb),"fr");
+    return comparaison*historiqueTri.sens;
   });
-  Object.entries(groupes).forEach(([categorie,cartes])=>{
-    cartes.forEach(({demande,lignes:items})=>afficherCarteHistorique(zones[categorie],demande,items,categorie==="archivees"));
-    if(!zones[categorie].children.length)zones[categorie].innerHTML='<div class="empty">Aucun résultat dans cette rubrique avec ces filtres.</div>';
+  if(!historiqueLignesAffichees.length){
+    zone.innerHTML='<tr><td colspan="5" class="empty">Aucun résultat avec ces filtres.</td></tr>';
+  }else{
+    historiqueLignesAffichees.forEach(({d,l,categorie},index)=>{
+      const m=materielParId(l.Materiel),tr=document.createElement("tr");
+      tr.tabIndex=0;tr.setAttribute("role","button");tr.setAttribute("aria-label","Ouvrir la fiche de "+(d.IdDemande||"la demande"));
+      const values=[
+        nomUtilisateur(d.Demandeur),
+        (l.Quantite||0)+" × "+(m?.Materiel||"Matériel inconnu"),
+        libelleCategorieHistorique(categorie),
+        dateDemandeHistorique(d)?afficherDate(dateDemandeHistorique(d)):"Non renseignée"
+      ];
+      values.forEach(v=>{const td=document.createElement("td");td.textContent=v;tr.appendChild(td);});
+      const tdStatut=document.createElement("td");tdStatut.appendChild(creerBadgeStatut(l.StatutDemande));tr.appendChild(tdStatut);
+      tr.addEventListener("click",()=>afficherFicheHistorique(d,l));
+      tr.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();afficherFicheHistorique(d,l);}});
+      zone.appendChild(tr);
+    });
+  }
+  $("historique-compteur").textContent=historiqueLignesAffichees.length+" matériel(s) correspondant aux filtres.";
+  // La fiche reste ouverte pendant un tri ou un filtrage si sa ligne est encore présente.
+  if(!fiche.hidden&&fiche.dataset.demandeId&&!historiqueLignesAffichees.some(x=>String(x.d.id)===fiche.dataset.demandeId)){
+    fiche.hidden=true;fiche.innerHTML="";
+  }
+}
+function afficherFicheHistorique(d,ligneSelectionnee){
+  const fiche=$("historique-fiche");fiche.hidden=false;fiche.innerHTML="";
+  fiche.dataset.demandeId=String(d.id);
+  const titre=document.createElement("h4");titre.textContent="Fiche de la demande "+(d.IdDemande||"n° "+d.id);
+  const fermer=document.createElement("button");fermer.type="button";fermer.className="neutral";fermer.textContent="Fermer la fiche";fermer.addEventListener("click",()=>{fiche.hidden=true;});
+  const infos=document.createElement("p");infos.className="small";
+  infos.textContent="Demandeur : "+nomUtilisateur(d.Demandeur)+" · Date de demande : "+(dateDemandeHistorique(d)?afficherDate(dateDemandeHistorique(d)):"Non renseignée")+" · Période : du "+afficherDate(d.DebutPret)+" au "+afficherDate(d.FinPret);
+  const motif=document.createElement("p");motif.textContent="Motif / détails : "+(d.DetailsDemande||"Non renseigné");
+  const global=document.createElement("p");global.className="small";global.textContent="Statut global : "+(d.StatutGlobal||"Non renseigné");
+  const sousTitre=document.createElement("strong");sousTitre.textContent="Matériels de cette demande";
+  fiche.append(titre,infos,motif,global,sousTitre);
+  // La fiche est en lecture seule. Elle présente les autres lignes de la demande lorsqu'elles sont accessibles au widget.
+  lignesDemande(d.id).forEach(l=>{
+    const m=materielParId(l.Materiel),line=document.createElement("div");line.className="history-detail-line";
+    const main=document.createElement("div");
+    const name=document.createElement("strong");name.textContent=(l.Quantite||0)+" × "+(m?.Materiel||"Matériel inconnu");
+    const meta=document.createElement("div");meta.className="history-detail-meta";
+    const notes=[l.StatutDemande||"Statut non renseigné"];
+    if(l.MotifAnnulation)notes.push("Motif d'annulation : "+l.MotifAnnulation);
+    if(l.ObservationsRetourPreteur)notes.push("Commentaire du prêteur : "+l.ObservationsRetourPreteur);
+    if(l.ObservationRetourDemandeur)notes.push("Commentaire du demandeur : "+l.ObservationRetourDemandeur);
+    if(l.DateAnnulation)notes.push("Annulée le "+afficherDate(l.DateAnnulation)+" par "+nomUtilisateur(l.AuteurAnnulation));
+    if(l.DateSuppressionDemande)notes.push("Archivée le "+afficherDate(l.DateSuppressionDemande)+" par "+nomUtilisateur(l.AuteurDemandeSuppression));
+    meta.textContent=notes.join(" · ");
+    main.append(name,meta);line.append(main,creerBadgeStatut(l.StatutDemande));
+    if(Number(l.id)===Number(ligneSelectionnee.id))line.style.background="#edf2ff";
+    fiche.appendChild(line);
   });
+  fiche.appendChild(fermer);
+  fiche.scrollIntoView({behavior:"smooth",block:"nearest"});
 }
 function actualiserOptionsHistoriqueReferent(){
-  const items=demandes.flatMap(d=>lignesDuReferentPourDemande(d).map(l=>({d,l})));
+  const items=demandes.flatMap(d=>lignesDuReferentPourDemande(d).filter(l=>categorieHistorique(l)).map(l=>({d,l})));
   const idsMateriels=[...new Set(items.map(x=>Number(x.l.Materiel)).filter(Boolean))];
   const idsDemandeurs=[...new Set(items.map(x=>Number(x.d.Demandeur)).filter(Boolean))];
   remplirSelectHistorique("historique-materiel",idsMateriels.map(id=>{const m=materielParId(id);return {value:id,label:m?.Materiel||"Matériel n° "+id};}).sort((a,b)=>a.label.localeCompare(b.label,"fr")),"Tous les matériels");
@@ -525,6 +599,7 @@ function actualiserMinimumDate(){const n=new Date(),local=new Date(n.getTime()-n
 $("reservation-enregistrer").addEventListener("click",creerReservationReferent);
 $("calendrier-mois").addEventListener("change",afficherCalendrier);
 ["historique-statut","historique-date-debut","historique-date-fin","historique-materiel","historique-demandeur"].forEach(id=>$(id).addEventListener("change",afficherHistoriqueReferent));
+document.querySelectorAll("[data-history-sort]").forEach(btn=>btn.addEventListener("click",()=>{const col=btn.dataset.historySort;if(historiqueTri.colonne===col)historiqueTri.sens*=-1;else historiqueTri={colonne:col,sens:1};afficherHistoriqueReferent();}));
 function reinitialiserFiltresHistoriqueReferent(){
   ["historique-statut","historique-materiel","historique-demandeur"].forEach(id=>{
     const el=$(id);
