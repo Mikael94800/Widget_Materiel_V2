@@ -8,11 +8,18 @@
 <style>
 :root{--blue:#3459dc;--bg:#f5f7fb;--border:#dce2ec;--text:#26334a;--green:#16865a;--red:#c43d43;--muted:#68758a}
 *{box-sizing:border-box}body{margin:0;padding:22px;background:var(--bg);color:var(--text);font-family:Arial,sans-serif}
-h2{margin:0 0 18px;font-size:21px}h3{font-size:16px;margin:0 0 14px}.panel{background:#fff;padding:20px;margin-bottom:20px;border-radius:12px;border:1px solid var(--border)}
+h2{margin:0;font-size:21px}
+.page-header{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:18px}
+.page-header #identity{margin:0 0 0 auto;max-width:min(620px,65%);text-align:right;padding:9px 13px;font-size:13px}
+@media(max-width:650px){.page-header{align-items:flex-start;flex-direction:column}.page-header #identity{margin:0;max-width:100%;text-align:left}}h3{font-size:16px;margin:0 0 14px}.panel{background:#fff;padding:20px;margin-bottom:20px;border-radius:12px;border:1px solid var(--border)}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.field{display:flex;flex-direction:column;gap:6px;margin-bottom:13px}label{font-size:13px;font-weight:bold}
 input,select,textarea{width:100%;border:1px solid var(--border);border-radius:7px;padding:11px;font:inherit;background:#fff}textarea{min-height:70px;resize:vertical}
 button{border:0;border-radius:7px;padding:10px 14px;cursor:pointer;font-weight:bold}button:disabled{opacity:.45;cursor:not-allowed}.primary{background:var(--blue);color:white}.success{background:#d8f3e5;color:#126b47}.danger{background:#fde3e3;color:#a72b35}.neutral{background:#edf2ff;color:#2945a6}
 .info,.error,.ok{padding:12px;border-radius:8px;margin:10px 0;font-size:14px}.info{background:#edf2ff}.error{background:#fde8e8;color:#a72b35}.ok{background:#e2f5eb;color:#126b47}.small{font-size:12px;color:var(--muted)}
+.field-incomplete input,.field-incomplete select,.field-incomplete textarea{border:2px solid var(--red)!important;background:#fff7f7}
+.field-error-note{font-size:12px;color:var(--red);font-weight:700;margin-top:2px}
+.zone-incomplete{outline:2px solid var(--red);outline-offset:3px;border-radius:6px}
+.zone-error-note{font-size:12px;color:var(--red);font-weight:700;margin-top:5px}
 .request{border:1px solid var(--border);padding:15px;border-radius:10px;margin:10px 0;background:#fff;box-shadow:0 2px 8px rgba(35,52,80,.04)}.history-panel{margin-top:24px}.history-panel details>summary{cursor:pointer;font-weight:bold;font-size:17px;list-style-position:inside;padding:4px 0 12px}.history-group{padding:14px 0;border-top:1px solid var(--border)}.history-group h3{margin-bottom:8px}.panel-attention{border-left:4px solid #d69a24}.panel-attention .actions button{padding:12px 18px;font-size:14px}.calendar-panel{margin-top:24px}.request-header{display:flex;justify-content:space-between;gap:12px;margin-bottom:8px;align-items:flex-start}.actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center}.cart-line{display:grid;grid-template-columns:minmax(0,1fr) 100px auto;gap:9px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}.empty{color:var(--muted);font-size:14px;padding:10px 0}.status-pill{display:inline-flex;align-items:center;flex:0 0 auto;border-radius:999px;padding:5px 11px;font-size:12px;line-height:1.2;font-weight:750;white-space:nowrap}.status-attente{background:#fff0cc;color:#875600}.status-validee{background:#d8f3e5;color:#126b47}.status-refusee{background:#fde3e3;color:#a72b35}.status-pretee{background:#dce8ff;color:#2945a6}.status-restituee{background:#ccebdd;color:#145b43}.status-annulee{background:#edf0f4;color:#596579}.status-inconnu{background:#edf0f4;color:#596579}.history-line{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 0;border-top:1px solid #edf0f4}.history-line-main{min-width:0}.history-line-title{font-weight:600}.history-meta{font-size:12px;color:var(--muted);margin-top:3px}.history-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;padding:14px 0 18px;border-bottom:1px solid var(--border);margin-bottom:8px}.history-controls .field{margin:0}.history-controls label{display:block;margin-bottom:5px}.history-controls select,.history-controls input{padding:9px;font-size:13px}.global-status{display:inline-flex;align-items:center;width:fit-content;font-size:11px;color:#596579;font-weight:600;background:#f1f3f6;padding:4px 9px;border-radius:6px;white-space:nowrap}
 .history-table-wrap{overflow-x:auto;margin-top:10px;border:1px solid var(--border);border-radius:8px}
 .history-table{width:100%;border-collapse:collapse;background:#fff;min-width:720px}
@@ -32,12 +39,9 @@ button{border:0;border-radius:7px;padding:10px 14px;cursor:pointer;font-weight:b
 </style></head>
 <body>
 <div class="page-header">
-<div>
 <h2>Gestion des prêts de matériel</h2>
-<div id="version-widget" class="small"></div>
-</div>
-</div>
 <div id="identity" class="info">Connexion à Grist et identification de votre profil…</div>
+</div>
 
 
 <section class="panel">
@@ -85,7 +89,6 @@ button{border:0;border-radius:7px;padding:10px 14px;cursor:pointer;font-weight:b
 
 
 <script>
-const VERSION_WIDGET="1.4.0";
 const TABLE_MATERIEL="MATERIEL",TABLE_UTILISATEURS="Utilisateurs",TABLE_IDENTIFICATION="Identification",TABLE_DEMANDES="DEMANDES",TABLE_SUIVI="SUIVI_DEMANDES";
 const STATUTS_RESERVANTS=["En attente","Validée","Prêtée"];
 let materiels=[],utilisateurs=[],demandes=[],lignes=[],currentUserRecord=null,panier=[];
@@ -167,7 +170,6 @@ async function chargerDonnees(){
   afficherIdentite();afficherDemandesATraiter();afficherPretsEnCours();afficherDemandesAnnulees();actualiserOptionsHistoriqueReferent();afficherHistoriqueReferent();afficherCatalogueReservation();afficherCalendrier();verifierReservation();
 }
 function afficherIdentite(){
-  $("version-widget").textContent="Widget Matériel — version "+VERSION_WIDGET;
   if(!currentUserRecord){
     $("identity").className="error";
     $("identity").textContent="Identité non vérifiée. Consultez le message d'erreur de connexion ci-dessous.";
@@ -479,12 +481,37 @@ function verifierReservation(){
   $("reservation-disponibilite").textContent=`Quantité disponible estimée : ${Math.max(0,available)}.`+(available<q?" Stock insuffisant.":"");
   btn.disabled=available<q;
 }
+
+function marquerChampIncomplet(id){
+ const el=$(id);if(!el)return;const field=el.closest(".field");if(!field)return;
+ field.classList.add("field-incomplete");
+ if(!field.querySelector(".field-error-note")){const note=document.createElement("div");note.className="field-error-note";note.textContent="Information à compléter";field.appendChild(note);}
+}
+function effacerChampIncomplet(id){
+ const el=$(id);if(!el)return;const field=el.closest(".field");if(!field)return;
+ field.classList.remove("field-incomplete");field.querySelector(".field-error-note")?.remove();
+}
+function verifierChampsObligatoires(ids){
+ let complet=true;ids.forEach(id=>{const el=$(id),value=el?String(el.value??"").trim():"";if(!value){marquerChampIncomplet(id);complet=false;}else effacerChampIncomplet(id);});return complet;
+}
+function installerValidationChamps(ids){
+ ids.forEach(id=>{const el=$(id);if(!el)return;const nettoyer=()=>{if(String(el.value??"").trim())effacerChampIncomplet(id);};el.addEventListener("input",nettoyer);el.addEventListener("change",nettoyer);});
+}
+function marquerZoneIncomplete(id){
+ const el=$(id);if(!el)return;el.classList.add("zone-incomplete");
+ if(!el.nextElementSibling||!el.nextElementSibling.classList.contains("zone-error-note")){const note=document.createElement("div");note.className="zone-error-note";note.textContent="Information à compléter";el.insertAdjacentElement("afterend",note);}
+}
+function effacerZoneIncomplete(id){
+ const el=$(id);if(!el)return;el.classList.remove("zone-incomplete");if(el.nextElementSibling?.classList.contains("zone-error-note"))el.nextElementSibling.remove();
+}
 async function creerReservationReferent(){
   const msg=$("reservation-message"),btn=$("reservation-enregistrer"),dt=datesReservation();
   msg.className="";msg.textContent="";
   if(!currentUserRecord||currentUserRecord.ReferentMateriel!==true){msg.className="error";msg.textContent="Fonction réservée aux référents.";return;}
   const id=Number($("reservation-materiel").value),q=Number($("reservation-quantite").value),m=materielParId(id);
-  if(!m||!materielDuService(m)||!dt.ok||!Number.isInteger(q)||q<1||!$("reservation-details").value.trim()){msg.className="error";msg.textContent="Vérifiez le matériel, les dates, la quantité et le motif.";return;}
+  const champsComplets=verifierChampsObligatoires(["reservation-materiel","reservation-quantite","reservation-debut","reservation-fin","reservation-details"]);
+  if(!champsComplets){msg.className="error";msg.textContent="Certaines informations obligatoires sont à compléter.";return;}
+  if(!m||!materielDuService(m)||!dt.ok||!Number.isInteger(q)||q<1){msg.className="error";msg.textContent="Vérifiez le matériel, les dates et la quantité.";return;}
   btn.disabled=true;
   try{
     await chargerDonnees();
@@ -596,6 +623,7 @@ async function annulerLigne(l){
 
 function actualiserMinimumDate(){const n=new Date(),local=new Date(n.getTime()-n.getTimezoneOffset()*60000).toISOString().slice(0,16);$("debut").min=local;$("fin").min=local;}
 ["reservation-materiel","reservation-quantite","reservation-debut","reservation-fin"].forEach(id=>{ $(id).addEventListener("change",verifierReservation);$(id).addEventListener("input",verifierReservation); });
+installerValidationChamps(["reservation-materiel","reservation-quantite","reservation-debut","reservation-fin","reservation-details"]);
 $("reservation-enregistrer").addEventListener("click",creerReservationReferent);
 $("calendrier-mois").addEventListener("change",afficherCalendrier);
 ["historique-statut","historique-date-debut","historique-date-fin","historique-materiel","historique-demandeur"].forEach(id=>$(id).addEventListener("change",afficherHistoriqueReferent));
