@@ -398,10 +398,6 @@ function creerCarteDemande(d,items,historique=false){
   const header=document.createElement("div");
   header.className="request-header";
 
-  const status=document.createElement("div");
-  status.className="request-status";
-  status.textContent=d.StatutGlobal||"Statut global non renseigné";
-  header.appendChild(status);
   card.appendChild(header);
 
   ajouterTexte(card,`Période de prêt : du ${afficherDate(d.DebutPret)} au ${afficherDate(d.FinPret)}`,"request-meta");
