@@ -266,7 +266,7 @@ function afficherPretsEnCours(){
     const head=b.querySelector(".request-header");if(head){if(d?.StatutGlobal){const g=document.createElement("span");g.className="global-status";g.textContent=d.StatutGlobal;head.append(g);}head.append(creerBadgeStatut(l.StatutDemande));}
     ajouterTexte(b,`Quantité : ${l.Quantite} | Du ${afficherDate(l.DebutPret)} au ${afficherDate(l.FinPret)}`);
     const a=document.createElement("div");a.className="actions";
-    if(l.StatutDemande==="Validée")ajouterBouton(a,"Confirmer la remise","success",()=>modifierStatutLigne(l,"Prêtée",{DateRemise:Math.floor(Date.now()/1000)}));
+    if(l.StatutDemande==="Validée"){ajouterBouton(a,"Confirmer la remise","success",()=>modifierStatutLigne(l,"Prêtée",{DateRemise:Math.floor(Date.now()/1000)}));if(estReservationPersonnelle(l,d))ajouterBouton(a,"Annuler ma réservation","danger",()=>annulerReservationReferent(l));else ajouterBouton(a,"Annuler la validation et refuser le prêt","danger",()=>annulerValidationEtRefuser(l));}
     if(l.StatutDemande==="Prêtée"){ajouterBouton(a,"Confirmer la restitution","neutral",()=>{if(confirm("Confirmer la restitution ?"))modifierStatutLigne(l,"Restituée",{DateRestitution:Math.floor(Date.now()/1000)});});}
     b.appendChild(a);const lab=document.createElement("label");lab.textContent="Observation du service prêteur";const ta=document.createElement("textarea");ta.value=l.ObservationsRetourPreteur||"";ta.onchange=()=>mettreAJourLigne(l.id,{ObservationsRetourPreteur:ta.value.trim()});b.append(lab,ta);z.appendChild(b);
   });
@@ -419,7 +419,8 @@ function afficherFicheHistorique(d,ligneSelectionnee){
     const meta=document.createElement("div");meta.className="history-detail-meta";
     const notes=[l.StatutDemande||"Statut non renseigné"];
     if(l.MotifAnnulation)notes.push("Motif d'annulation : "+l.MotifAnnulation);
-    if(l.ObservationsRetourPreteur)notes.push("Commentaire du prêteur : "+l.ObservationsRetourPreteur);
+    if(l.ObservationsRetourPreteur)notes.push("Observation du prêteur : "+l.ObservationsRetourPreteur);
+    if(l.CommentaireServicePreteur)notes.push("Motif du refus du prêt : "+l.CommentaireServicePreteur);
     if(l.ObservationRetourDemandeur)notes.push("Commentaire du demandeur : "+l.ObservationRetourDemandeur);
     if(l.DateAnnulation)notes.push("Annulée le "+afficherDate(l.DateAnnulation)+" par "+nomUtilisateur(l.AuteurAnnulation));
     if(l.DateSuppressionDemande)notes.push("Archivée le "+afficherDate(l.DateSuppressionDemande)+" par "+nomUtilisateur(l.AuteurDemandeSuppression));
@@ -516,7 +517,7 @@ async function creerReservationReferent(){
   try{
     await chargerDonnees();
     if(stockDisponible(id,dt.debut,dt.fin)<q)throw Error("Le stock disponible est insuffisant pour cette période.");
-    const fields={IdDemande:creerNumeroDemande(),DebutPret:dt.debut,FinPret:dt.fin,DetailsDemande:$("reservation-details").value.trim()};
+    const fields={IdDemande:creerNumeroDemande(),Demandeur:currentUserRecord.id,ServiceDemandeur:serviceUtilisateur(),DebutPret:dt.debut,FinPret:dt.fin,DetailsDemande:$("reservation-details").value.trim()};
     const result=await grist.docApi.applyUserActions([["AddRecord",TABLE_DEMANDES,null,fields]]);
     let parentId=extraireIdAjoute(result);
     if(parentId==null){const refreshed=rowsFromGrist(await grist.docApi.fetchTable(TABLE_DEMANDES));const row=refreshed.find(d=>d.IdDemande===fields.IdDemande);if(row)parentId=row.id;}
@@ -550,6 +551,35 @@ function afficherCalendrier(){
   }
   zone.appendChild(table);
   const legend=document.createElement("p");legend.className="small";legend.textContent="Jaune : en attente · Vert : validée · Bleu : prêtée";zone.appendChild(legend);
+}
+function estReservationPersonnelle(l,d){
+  const m=materielParId(l.Materiel);
+  return Boolean(d&&currentUserRecord&&Number(d.Demandeur)===Number(currentUserRecord.id)
+    &&m&&materielDuService(m)&&estReferentDeLigne(l));
+}
+async function annulerReservationReferent(l){
+  const d=demandeParId(l.Demande);
+  if(!estReservationPersonnelle(l,d)||l.StatutDemande!=="Validée"){
+    alert("Seule votre propre réservation validée, portant sur un matériel de votre service et non encore remise, peut être annulée.");return;
+  }
+  const motif=prompt("Indiquez le motif de l'annulation de votre réservation :");
+  if(motif===null)return;
+  if(!motif.trim()){alert("Le motif de l'annulation est obligatoire.");return;}
+  if(!confirm("Confirmer l'annulation de votre réservation ?"))return;
+  const fields={StatutDemande:"Annulée",DateAnnulation:Math.floor(Date.now()/1000),AuteurAnnulation:currentUserRecord.id,MotifAnnulation:motif.trim()};
+  try{await grist.docApi.applyUserActions([["UpdateRecord",TABLE_SUIVI,l.id,fields]]);await chargerDonnees();alert("Votre réservation a été annulée.");}
+  catch(e){alert("Annulation impossible. Vérifiez les droits sur StatutDemande, DateAnnulation, AuteurAnnulation et MotifAnnulation.\n\n"+(e.message||e));}
+}
+async function annulerValidationEtRefuser(l){
+  if(!estReferentDeLigne(l)||l.StatutDemande!=="Validée"){
+    alert("Seule une ligne validée relevant de votre service peut faire l'objet de cette action avant la remise.");return;
+  }
+  const motif=prompt("Indiquez le motif de l'annulation de la validation et du refus du prêt :");
+  if(motif===null)return;
+  if(!motif.trim()){alert("Le motif du refus est obligatoire.");return;}
+  if(!confirm("Annuler cette validation et refuser le prêt ?"))return;
+  try{await grist.docApi.applyUserActions([["UpdateRecord",TABLE_SUIVI,l.id,{StatutDemande:"Refusée",CommentaireServicePreteur:motif.trim()}]]);await chargerDonnees();alert("La validation a été annulée et le prêt refusé.");}
+  catch(e){alert("Modification impossible. Vérifiez les droits sur StatutDemande et CommentaireServicePreteur.\n\n"+(e.message||e));}
 }
 async function modifierStatutLigne(l,statut,extra={}){
   if(!estReferentDeLigne(l)){alert("Vous n'êtes pas le référent compétent pour ce matériel.");return;}
