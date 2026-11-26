@@ -283,7 +283,7 @@ function afficherDemandesAnnulees(){
   if(!currentUserRecord){zone.textContent="Profil non identifié.";return;}
   const list=demandes.filter(d=>{
     const items=lignesDuReferentPourDemande(d);
-    return items.length>0&&items.every(l=>l.StatutDemande==="Annulée"&&l.SuppressionDemande!==true);
+    return items.length>0&&items.every(l=>l.StatutDemande==="Annulée"&&l.SuppressionDemandee!==true);
   }).sort((a,b)=>Number(b.id)-Number(a.id));
   if(!list.length){zone.innerHTML='<div class="empty">Aucune demande entièrement annulée à archiver dans votre périmètre.</div>';return;}
   list.forEach(d=>{
@@ -326,7 +326,7 @@ function dateHistoriqueEnSecondes(value,fin=false){
   return d.getTime()/1000;
 }
 function categorieHistorique(l){
-  if(l.SuppressionDemande===true)return "archivees";
+  if(l.SuppressionDemandee===true)return "archivees";
   if(l.StatutDemande==="Annulée")return "annulees";
   if(l.StatutDemande==="Refusée")return "refusees";
   if(l.StatutDemande==="Restituée")return "cloturees";
@@ -423,7 +423,7 @@ function afficherFicheHistorique(d,ligneSelectionnee){
     if(l.CommentaireServicePreteur)notes.push("Motif du refus du prêt : "+l.CommentaireServicePreteur);
     if(l.ObservationRetourDemandeur)notes.push("Commentaire du demandeur : "+l.ObservationRetourDemandeur);
     if(l.DateAnnulation)notes.push("Annulée le "+afficherDate(l.DateAnnulation)+" par "+nomUtilisateur(l.AuteurAnnulation));
-    if(l.DateSuppressionDemande)notes.push("Archivée le "+afficherDate(l.DateSuppressionDemande)+" par "+nomUtilisateur(l.AuteurDemandeSuppression));
+    if(l.DateDemandeSuppression)notes.push("Archivée le "+afficherDate(l.DateDemandeSuppression)+" par "+nomUtilisateur(l.AuteurDemandeSuppression));
     meta.textContent=notes.join(" · ");
     main.append(name,meta);line.append(main,creerBadgeStatut(l.StatutDemande));
     if(Number(l.id)===Number(ligneSelectionnee.id))line.style.background="#edf2ff";
@@ -441,17 +441,17 @@ function actualiserOptionsHistoriqueReferent(){
 }
 async function archiverDemande(d){
   const items=lignesDuReferentPourDemande(d);
-  if(!items.length||!items.every(l=>l.StatutDemande==="Annulée"&&l.SuppressionDemande!==true)){
+  if(!items.length||!items.every(l=>l.StatutDemande==="Annulée"&&l.SuppressionDemandee!==true)){
     alert("Cette demande n'est pas entièrement annulée dans votre périmètre, ou elle a déjà été archivée.");return;
   }
   if(!confirm("Archiver cette demande ? Elle disparaîtra des rubriques courantes, mais restera consultable dans l'historique."))return;
   const maintenant=Math.floor(Date.now()/1000);
-  const fields={SuppressionDemande:true,DateSuppressionDemande:maintenant,AuteurDemandeSuppression:currentUserRecord.id};
+  const fields={SuppressionDemandee:true,DateDemandeSuppression:maintenant,AuteurDemandeSuppression:currentUserRecord.id};
   try{
     await grist.docApi.applyUserActions(items.map(l=>["UpdateRecord",TABLE_SUIVI,l.id,fields]));
     await chargerDonnees();
   }catch(e){
-    alert("Archivage impossible. Vérifiez les droits sur SuppressionDemande, DateSuppressionDemande et AuteurDemandeSuppression.\\n\\n"+(e.message||e));
+    alert("Archivage impossible. Vérifiez les droits sur SuppressionDemandee, DateDemandeSuppression et AuteurDemandeSuppression.\\n\\n"+(e.message||e));
   }
 }
 
