@@ -13,7 +13,7 @@ h2{margin:0 0 18px;font-size:21px}h3{font-size:16px;margin:0 0 14px}.panel{backg
 input,select,textarea{width:100%;border:1px solid var(--border);border-radius:7px;padding:11px;font:inherit;background:#fff}textarea{min-height:70px;resize:vertical}
 button{border:0;border-radius:7px;padding:10px 14px;cursor:pointer;font-weight:bold}button:disabled{opacity:.45;cursor:not-allowed}.primary{background:var(--blue);color:white}.success{background:#d8f3e5;color:#126b47}.danger{background:#fde3e3;color:#a72b35}.neutral{background:#edf2ff;color:#2945a6}
 .info,.error,.ok{padding:12px;border-radius:8px;margin:10px 0;font-size:14px}.info{background:#edf2ff}.error{background:#fde8e8;color:#a72b35}.ok{background:#e2f5eb;color:#126b47}.small{font-size:12px;color:var(--muted)}
-.request{border:1px solid var(--border);padding:15px;border-radius:10px;margin:10px 0;background:#fff;box-shadow:0 2px 8px rgba(35,52,80,.04)}.history-panel{margin-top:24px}.history-panel details>summary{cursor:pointer;font-weight:bold;font-size:17px;list-style-position:inside;padding:4px 0 12px}.history-group{padding:14px 0;border-top:1px solid var(--border)}.history-group h3{margin-bottom:8px}.panel-attention{border-left:4px solid #d69a24}.panel-attention .actions button{padding:12px 18px;font-size:14px}.calendar-panel{margin-top:24px}.request-header{display:flex;justify-content:space-between;gap:12px;margin-bottom:8px;align-items:flex-start}.actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center}.cart-line{display:grid;grid-template-columns:minmax(0,1fr) 100px auto;gap:9px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}.empty{color:var(--muted);font-size:14px;padding:10px 0}.status-pill{display:inline-flex;align-items:center;flex:0 0 auto;border-radius:999px;padding:5px 11px;font-size:12px;font-weight:750;white-space:nowrap}.status-attente{background:#fff0cc;color:#875600}.status-validee{background:#d8f3e5;color:#126b47}.status-refusee{background:#fde3e3;color:#a72b35}.status-pretee{background:#dce8ff;color:#2945a6}.status-restituee{background:#ccebdd;color:#145b43}.status-annulee{background:#edf0f4;color:#596579}.status-inconnu{background:#edf0f4;color:#596579}.history-line{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 0;border-top:1px solid #edf0f4}.history-line-main{min-width:0}.history-line-title{font-weight:600}.history-meta{font-size:12px;color:var(--muted);margin-top:3px}.global-status{display:inline-flex;align-items:center;width:fit-content;font-size:11px;color:#596579;font-weight:600;background:#f1f3f6;padding:4px 9px;border-radius:6px;white-space:nowrap}
+.request{border:1px solid var(--border);padding:15px;border-radius:10px;margin:10px 0;background:#fff;box-shadow:0 2px 8px rgba(35,52,80,.04)}.history-panel{margin-top:24px}.history-panel details>summary{cursor:pointer;font-weight:bold;font-size:17px;list-style-position:inside;padding:4px 0 12px}.history-group{padding:14px 0;border-top:1px solid var(--border)}.history-group h3{margin-bottom:8px}.panel-attention{border-left:4px solid #d69a24}.panel-attention .actions button{padding:12px 18px;font-size:14px}.calendar-panel{margin-top:24px}.request-header{display:flex;justify-content:space-between;gap:12px;margin-bottom:8px;align-items:flex-start}.actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center}.cart-line{display:grid;grid-template-columns:minmax(0,1fr) 100px auto;gap:9px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}.empty{color:var(--muted);font-size:14px;padding:10px 0}.status-pill{display:inline-flex;align-items:center;flex:0 0 auto;border-radius:999px;padding:10px 22px;font-size:24px;line-height:1.2;font-weight:750;white-space:nowrap}.status-attente{background:#fff0cc;color:#875600}.status-validee{background:#d8f3e5;color:#126b47}.status-refusee{background:#fde3e3;color:#a72b35}.status-pretee{background:#dce8ff;color:#2945a6}.status-restituee{background:#ccebdd;color:#145b43}.status-annulee{background:#edf0f4;color:#596579}.status-inconnu{background:#edf0f4;color:#596579}.history-line{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 0;border-top:1px solid #edf0f4}.history-line-main{min-width:0}.history-line-title{font-weight:600}.history-meta{font-size:12px;color:var(--muted);margin-top:3px}.history-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;padding:14px 0 18px;border-bottom:1px solid var(--border);margin-bottom:8px}.history-controls .field{margin:0}.history-controls label{display:block;margin-bottom:5px}.history-controls select,.history-controls input{padding:9px;font-size:13px}.global-status{display:inline-flex;align-items:center;width:fit-content;font-size:11px;color:#596579;font-weight:600;background:#f1f3f6;padding:4px 9px;border-radius:6px;white-space:nowrap}
 @media(max-width:650px){body{padding:12px}.grid{grid-template-columns:1fr}.cart-line{grid-template-columns:1fr 85px}.cart-line button{grid-column:1/-1}}
 </style></head>
 <body>
@@ -43,7 +43,20 @@ button{border:0;border-radius:7px;padding:10px 14px;cursor:pointer;font-weight:b
 <section class="panel"><h3>Demandes à traiter par mon service prêteur</h3><p class="small">Les demandes qui attendent encore une décision sur un matériel de votre service.</p><div id="a-traiter">Chargement…</div></section>
 <section class="panel"><h3>Prêts en cours et restitutions</h3><p class="small">Matériels validés, remis ou en attente de restitution.</p><div id="prets-en-cours">Chargement…</div></section>
 <section class="panel panel-attention"><h3>Demandes annulées par les emprunteurs</h3><p class="small">Après vérification, archivez la demande pour la retirer de votre vue courante. Elle restera consultable dans l'historique.</p><div id="annulations-a-archiver">Chargement…</div></section>
-<section class="panel history-panel"><details open><summary>Historique des demandes</summary><div class="history-group"><h3>Demandes clôturées</h3><div id="historique-cloturees">Chargement…</div></div><div class="history-group"><h3>Demandes annulées par les emprunteurs</h3><div id="historique-annulees">Chargement…</div></div><div class="history-group"><h3>Demandes archivées / supprimées</h3><div id="historique-archivees">Chargement…</div></div></details></section>
+<section class="panel history-panel"><details open><summary>Historique des demandes</summary>
+<div class="history-controls">
+  <div class="field"><label for="historique-statut">Catégorie</label><select id="historique-statut"><option value="">Toutes les catégories</option><option value="cloturees">Demandes clôturées</option><option value="annulees">Demandes annulées par les emprunteurs</option><option value="archivees">Demandes archivées / supprimées</option><option value="refusees">Prêt non accordé</option></select></div>
+  <div class="field"><label for="historique-date-debut">Date de demande — du</label><input id="historique-date-debut" type="date"></div>
+  <div class="field"><label for="historique-date-fin">Date de demande — au</label><input id="historique-date-fin" type="date"></div>
+  <div class="field"><label for="historique-materiel">Matériel</label><select id="historique-materiel"><option value="">Tous les matériels</option></select></div>
+  <div class="field"><label for="historique-demandeur">Demandeur</label><select id="historique-demandeur"><option value="">Tous les demandeurs</option></select></div>
+  <div class="field"><label>&nbsp;</label><button type="button" class="neutral" id="historique-reinitialiser">Réinitialiser les filtres</button></div>
+</div>
+<div class="history-group"><h3>Demandes clôturées</h3><div id="historique-cloturees">Chargement…</div></div>
+<div class="history-group"><h3>Demandes annulées par les emprunteurs</h3><div id="historique-annulees">Chargement…</div></div>
+<div class="history-group"><h3>Demandes archivées / supprimées</h3><div id="historique-archivees">Chargement…</div></div>
+<div class="history-group"><h3>Prêt non accordé</h3><div id="historique-refusees">Chargement…</div></div>
+</details></section>
 <section class="panel calendar-panel">
 <div class="request-header"><h3>Calendrier de mobilisation du matériel</h3><div class="field"><label for="calendrier-mois">Mois</label><input id="calendrier-mois" type="month"></div></div>
 <p class="small">Calendrier limité au matériel de votre service. Les demandes en attente, réservations validées et prêts en cours sont distingués.</p>
@@ -52,7 +65,7 @@ button{border:0;border-radius:7px;padding:10px 14px;cursor:pointer;font-weight:b
 
 
 <script>
-const VERSION_WIDGET="1.2.0";
+const VERSION_WIDGET="1.3.0";
 const TABLE_MATERIEL="MATERIEL",TABLE_UTILISATEURS="Utilisateurs",TABLE_IDENTIFICATION="Identification",TABLE_DEMANDES="DEMANDES",TABLE_SUIVI="SUIVI_DEMANDES";
 const STATUTS_RESERVANTS=["En attente","Validée","Prêtée"];
 let materiels=[],utilisateurs=[],demandes=[],lignes=[],currentUserRecord=null,panier=[];
@@ -131,7 +144,7 @@ async function chargerDonnees(){
   // Identification sécurisée par la ligne unique rendue visible dans la table Identification.
   await identifierUtilisateur();
   if(currentUserRecord.ReferentMateriel!==true)throw new Error("Ce widget est réservé aux référents matériel.");
-  afficherIdentite();afficherDemandesATraiter();afficherPretsEnCours();afficherDemandesAnnulees();afficherHistoriqueReferent();afficherCatalogueReservation();afficherCalendrier();verifierReservation();
+  afficherIdentite();afficherDemandesATraiter();afficherPretsEnCours();afficherDemandesAnnulees();actualiserOptionsHistoriqueReferent();afficherHistoriqueReferent();afficherCatalogueReservation();afficherCalendrier();verifierReservation();
 }
 function afficherIdentite(){
   $("version-widget").textContent="Widget Matériel — version "+VERSION_WIDGET;
@@ -294,21 +307,60 @@ function afficherCarteHistorique(zone,d,items,archivee=false){
   });
   zone.append(card);
 }
+function remplirSelectHistorique(id,options,placeholder){
+  const select=$(id),old=select.value;
+  select.innerHTML="";
+  const first=document.createElement("option");first.value="";first.textContent=placeholder;select.appendChild(first);
+  options.forEach(o=>{const option=document.createElement("option");option.value=String(o.value);option.textContent=o.label;select.appendChild(option);});
+  if([...select.options].some(o=>o.value===old))select.value=old;
+}
+function dateHistoriqueEnSecondes(value,fin=false){
+  if(!value)return null;
+  const d=new Date(value+(fin?"T23:59:59":"T00:00:00"));
+  return d.getTime()/1000;
+}
+function filtresHistoriqueReferent(d,l){
+  const materiel=$("historique-materiel").value,demandeur=$("historique-demandeur").value;
+  const dateDebut=dateHistoriqueEnSecondes($("historique-date-debut").value);
+  const dateFin=dateHistoriqueEnSecondes($("historique-date-fin").value,true);
+  if(demandeur&&String(d.Demandeur)!==demandeur)return false;
+  if(materiel&&String(l.Materiel)!==materiel)return false;
+  const date=Number(d.DateDemande||d.DebutPret||0);
+  if(dateDebut!==null&&date<dateDebut)return false;
+  if(dateFin!==null&&date>dateFin)return false;
+  return true;
+}
 function afficherHistoriqueReferent(){
-  const zones={cloturees:$("historique-cloturees"),annulees:$("historique-annulees"),archivees:$("historique-archivees")};
+  const zones={cloturees:$("historique-cloturees"),annulees:$("historique-annulees"),archivees:$("historique-archivees"),refusees:$("historique-refusees")};
   Object.values(zones).forEach(z=>z.innerHTML="");
-  const mine=demandes.slice().sort((a,b)=>Number(b.id)-Number(a.id));
-  mine.forEach(d=>{
-    const items=lignesDuReferentPourDemande(d);
-    if(!items.length)return;
-    const archivee=items.some(l=>l.SuppressionDemande===true);
-    const touteAnnulee=items.every(l=>l.StatutDemande==="Annulée");
-    const touteTerminee=items.every(l=>["Restituée","Refusée","Annulée"].includes(l.StatutDemande));
-    if(archivee)afficherCarteHistorique(zones.archivees,d,items,true);
-    else if(touteAnnulee)afficherCarteHistorique(zones.annulees,d,items,false);
-    else if(touteTerminee)afficherCarteHistorique(zones.cloturees,d,items,false);
+  const lignesHistoriques=[];
+  demandes.slice().sort((a,b)=>Number(b.id)-Number(a.id)).forEach(d=>{
+    lignesDuReferentPourDemande(d).forEach(l=>{
+      let categorie="";
+      if(l.SuppressionDemande===true)categorie="archivees";
+      else if(l.StatutDemande==="Annulée")categorie="annulees";
+      else if(l.StatutDemande==="Refusée")categorie="refusees";
+      else if(l.StatutDemande==="Restituée")categorie="cloturees";
+      if(categorie&&filtresHistoriqueReferent(d,l))lignesHistoriques.push({d,l,categorie});
+    });
   });
-  Object.entries(zones).forEach(([k,z])=>{if(!z.children.length)z.innerHTML='<div class="empty">Aucune demande dans cette rubrique.</div>';});
+  const filtre=$("historique-statut").value,groupes={};
+  Object.keys(zones).forEach(k=>groupes[k]=new Map());
+  lignesHistoriques.filter(x=>!filtre||x.categorie===filtre).forEach(({d,l,categorie})=>{
+    if(!groupes[categorie].has(d.id))groupes[categorie].set(d.id,{demande:d,lignes:[]});
+    groupes[categorie].get(d.id).lignes.push(l);
+  });
+  Object.entries(groupes).forEach(([categorie,cartes])=>{
+    cartes.forEach(({demande,lignes:items})=>afficherCarteHistorique(zones[categorie],demande,items,categorie==="archivees"));
+    if(!zones[categorie].children.length)zones[categorie].innerHTML='<div class="empty">Aucun résultat dans cette rubrique avec ces filtres.</div>';
+  });
+}
+function actualiserOptionsHistoriqueReferent(){
+  const items=demandes.flatMap(d=>lignesDuReferentPourDemande(d).map(l=>({d,l})));
+  const idsMateriels=[...new Set(items.map(x=>Number(x.l.Materiel)).filter(Boolean))];
+  const idsDemandeurs=[...new Set(items.map(x=>Number(x.d.Demandeur)).filter(Boolean))];
+  remplirSelectHistorique("historique-materiel",idsMateriels.map(id=>{const m=materielParId(id);return {value:id,label:m?.Materiel||"Matériel n° "+id};}).sort((a,b)=>a.label.localeCompare(b.label,"fr")),"Tous les matériels");
+  remplirSelectHistorique("historique-demandeur",idsDemandeurs.map(id=>({value:id,label:nomUtilisateur(id)})).sort((a,b)=>a.label.localeCompare(b.label,"fr")),"Tous les demandeurs");
 }
 async function archiverDemande(d){
   const items=lignesDuReferentPourDemande(d);
@@ -472,6 +524,11 @@ function actualiserMinimumDate(){const n=new Date(),local=new Date(n.getTime()-n
 ["reservation-materiel","reservation-quantite","reservation-debut","reservation-fin"].forEach(id=>{ $(id).addEventListener("change",verifierReservation);$(id).addEventListener("input",verifierReservation); });
 $("reservation-enregistrer").addEventListener("click",creerReservationReferent);
 $("calendrier-mois").addEventListener("change",afficherCalendrier);
+["historique-statut","historique-date-debut","historique-date-fin","historique-materiel","historique-demandeur"].forEach(id=>$(id).addEventListener("change",afficherHistoriqueReferent));
+$("historique-reinitialiser").addEventListener("click",()=>{
+  ["historique-statut","historique-date-debut","historique-date-fin","historique-materiel","historique-demandeur"].forEach(id=>$(id).value="");
+  afficherHistoriqueReferent();
+});
 grist.ready({requiredAccess:"full"});
 chargerDonnees().catch(e=>{$("identity").className="error";$("identity").textContent="Erreur de connexion à Grist : "+(e.message||e);});
 </script></body></html>
