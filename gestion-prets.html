@@ -36,6 +36,17 @@ button{border:0;border-radius:7px;padding:10px 14px;cursor:pointer;font-weight:b
 .history-detail-meta{font-size:12px;color:var(--muted);margin-top:4px}
 
 @media(max-width:650px){body{padding:12px}.grid{grid-template-columns:1fr}.cart-line{grid-template-columns:1fr 85px}.cart-line button{grid-column:1/-1}}
+
+.app-dialog-overlay{position:fixed;inset:0;z-index:10000;background:rgba(18,28,45,.48);display:flex;align-items:center;justify-content:center;padding:18px}
+.app-dialog{width:min(460px,100%);background:#fff;border:1px solid #dce2eb;border-radius:12px;box-shadow:0 18px 55px rgba(15,23,42,.24);overflow:hidden;color:#202b3c}
+.app-dialog-header{padding:17px 20px;border-bottom:1px solid #e8ecf2}
+.app-dialog-header h3{margin:0;font-size:17px;font-weight:700;color:#26364d}
+.app-dialog-content{padding:20px;white-space:pre-line;font-size:14px;line-height:1.55}
+.app-dialog-content p{margin:0}
+.app-dialog-input{display:block;width:100%;min-height:84px;margin-top:14px;padding:10px;border:1px solid #cbd3df;border-radius:7px;font:inherit;resize:vertical;box-sizing:border-box}
+.app-dialog-actions{display:flex;justify-content:flex-end;gap:9px;padding:0 20px 18px}
+.app-dialog-actions button{min-width:104px}
+
 </style></head>
 <body>
 <div class="page-header">
@@ -104,6 +115,70 @@ const TABLE_MATERIEL="MATERIEL",TABLE_UTILISATEURS="Utilisateurs",TABLE_IDENTIFI
 const STATUTS_RESERVANTS=["En attente","Validée","Prêtée"];
 let materiels=[],utilisateurs=[],demandes=[],lignes=[],currentUserRecord=null,panier=[];
 const $=id=>document.getElementById(id);
+
+function boiteDialogue(message,type="confirmation"){
+  return new Promise(resolve=>{
+    const overlay=document.createElement("div");
+    overlay.className="app-dialog-overlay";
+    const dialog=document.createElement("div");
+    dialog.className="app-dialog";
+    dialog.setAttribute("role","dialog");
+    dialog.setAttribute("aria-modal","true");
+    dialog.setAttribute("aria-labelledby","app-dialog-title");
+    const header=document.createElement("div");
+    header.className="app-dialog-header";
+    const title=document.createElement("h3");
+    title.id="app-dialog-title";
+    title.textContent="Gestion du matériel";
+    header.appendChild(title);
+    const content=document.createElement("div");
+    content.className="app-dialog-content";
+    const text=document.createElement("p");
+    text.textContent=String(message??"");
+    content.appendChild(text);
+    let field=null;
+    if(type==="saisie"){
+      field=document.createElement("textarea");
+      field.className="app-dialog-input";
+      field.rows=3;
+      field.setAttribute("aria-label","Motif");
+      content.appendChild(field);
+    }
+    const actions=document.createElement("div");
+    actions.className="app-dialog-actions";
+    const cancel=document.createElement("button");
+    cancel.type="button";
+    cancel.className="neutral";
+    cancel.textContent="Annuler";
+    const ok=document.createElement("button");
+    ok.type="button";
+    ok.textContent=type==="saisie"?"Valider":"Confirmer";
+    let closed=false;
+    const finish=value=>{
+      if(closed)return;
+      closed=true;
+      document.removeEventListener("keydown",onKey);
+      overlay.remove();
+      resolve(value);
+    };
+    const onKey=e=>{
+      if(e.key==="Escape"){e.preventDefault();finish(type==="saisie"?null:false);}
+      if(e.key==="Enter"&&type==="confirmation"){e.preventDefault();finish(true);}
+    };
+    cancel.addEventListener("click",()=>finish(type==="saisie"?null:false));
+    ok.addEventListener("click",()=>finish(type==="saisie"?field.value:true));
+    overlay.addEventListener("click",e=>{if(e.target===overlay)finish(type==="saisie"?null:false);});
+    actions.append(cancel,ok);
+    dialog.append(header,content,actions);
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+    document.addEventListener("keydown",onKey);
+    (field||ok).focus();
+  });
+}
+function boiteConfirmation(message){return boiteDialogue(message,"confirmation");}
+function boiteSaisie(message){return boiteDialogue(message,"saisie");}
+
 
 async function identifierUtilisateur(){
   currentUserRecord=null;
@@ -278,7 +353,7 @@ function afficherPretsEnCours(){
     ajouterTexte(b,`Quantité : ${l.Quantite} | Du ${afficherDate(l.DebutPret)} au ${afficherDate(l.FinPret)}`);
     const a=document.createElement("div");a.className="actions";
     if(l.StatutDemande==="Validée"){ajouterBouton(a,"Confirmer la remise","success",()=>modifierStatutLigne(l,"Prêtée",{DateRemise:Math.floor(Date.now()/1000)}));if(estReservationPersonnelle(l,d))ajouterBouton(a,"Annuler ma réservation","danger",()=>annulerReservationReferent(l));else ajouterBouton(a,"Annuler la validation et refuser le prêt","danger",()=>annulerValidationEtRefuser(l));}
-    if(l.StatutDemande==="Prêtée"){ajouterBouton(a,"Confirmer la restitution","neutral",()=>{if(confirm("Confirmer la restitution ?"))modifierStatutLigne(l,"Restituée",{DateRestitution:Math.floor(Date.now()/1000)});});}
+    if(l.StatutDemande==="Prêtée"){ajouterBouton(a,"Confirmer la restitution","neutral",async()=>{if(await boiteConfirmation("Confirmer la restitution ?"))modifierStatutLigne(l,"Restituée",{DateRestitution:Math.floor(Date.now()/1000)});});}
     b.appendChild(a);const lab=document.createElement("label");lab.textContent="Observation du service prêteur";const ta=document.createElement("textarea");ta.value=l.ObservationsRetourPreteur||"";ta.onchange=()=>mettreAJourLigne(l.id,{ObservationsRetourPreteur:ta.value.trim()});b.append(lab,ta);z.appendChild(b);
   });
 }
@@ -455,7 +530,7 @@ async function archiverDemande(d){
   if(!items.length||!items.every(l=>l.StatutDemande==="Annulée"&&l.SuppressionDemandee!==true)){
     alert("Cette demande n'est pas entièrement annulée dans votre périmètre, ou elle a déjà été archivée.");return;
   }
-  if(!confirm("Archiver cette demande ? Elle disparaîtra des rubriques courantes, mais restera consultable dans l'historique."))return;
+  if(!await boiteConfirmation("Archiver cette demande ? Elle disparaîtra des rubriques courantes, mais restera consultable dans l'historique."))return;
   const maintenant=Math.floor(Date.now()/1000);
   const fields={SuppressionDemandee:true,DateDemandeSuppression:maintenant,AuteurDemandeSuppression:currentUserRecord.id};
   try{
@@ -609,10 +684,10 @@ async function annulerReservationReferent(l){
   if(!estReservationPersonnelle(l,d)||l.StatutDemande!=="Validée"){
     alert("Seule votre propre réservation validée, portant sur un matériel de votre service et non encore remise, peut être annulée.");return;
   }
-  const motif=prompt("Indiquez le motif de l'annulation de votre réservation :");
+  const motif=await boiteSaisie("Indiquez le motif de l'annulation de votre réservation :");
   if(motif===null)return;
   if(!motif.trim()){alert("Le motif de l'annulation est obligatoire.");return;}
-  if(!confirm("Confirmer l'annulation de votre réservation ?"))return;
+  if(!await boiteConfirmation("Confirmer l'annulation de votre réservation ?"))return;
   const fields={StatutDemande:"Annulée",DateAnnulation:Math.floor(Date.now()/1000),AuteurAnnulation:currentUserRecord.id,MotifAnnulation:motif.trim()};
   try{await grist.docApi.applyUserActions([["UpdateRecord",TABLE_SUIVI,l.id,fields]]);await chargerDonnees();alert("Votre réservation a été annulée.");}
   catch(e){alert("Annulation impossible. Vérifiez les droits sur StatutDemande, DateAnnulation, AuteurAnnulation et MotifAnnulation.\n\n"+(e.message||e));}
@@ -621,10 +696,10 @@ async function annulerValidationEtRefuser(l){
   if(!estReferentDeLigne(l)||l.StatutDemande!=="Validée"){
     alert("Seule une ligne validée relevant de votre service peut faire l'objet de cette action avant la remise.");return;
   }
-  const motif=prompt("Indiquez le motif de l'annulation de la validation et du refus du prêt :");
+  const motif=await boiteSaisie("Indiquez le motif de l'annulation de la validation et du refus du prêt :");
   if(motif===null)return;
   if(!motif.trim()){alert("Le motif du refus est obligatoire.");return;}
-  if(!confirm("Annuler cette validation et refuser le prêt ?"))return;
+  if(!await boiteConfirmation("Annuler cette validation et refuser le prêt ?"))return;
   try{await grist.docApi.applyUserActions([["UpdateRecord",TABLE_SUIVI,l.id,{StatutDemande:"Refusée",CommentaireServicePreteur:motif.trim()}]]);await chargerDonnees();alert("La validation a été annulée et le prêt refusé.");}
   catch(e){alert("Modification impossible. Vérifiez les droits sur StatutDemande et CommentaireServicePreteur.\n\n"+(e.message||e));}
 }
@@ -660,7 +735,7 @@ async function annulerLigne(l){
   }
 
   // Saisie obligatoire du motif.
-  const motif=prompt("Indiquez le motif de l'annulation :");
+  const motif=await boiteSaisie("Indiquez le motif de l'annulation :");
 
   if(motif===null)return;
 
@@ -669,7 +744,7 @@ async function annulerLigne(l){
     return;
   }
 
-  if(!confirm(
+  if(!await boiteConfirmation(
     "Confirmer l'annulation de ce matériel ?\n\n"+
     "Cette opération sera enregistrée dans le suivi de la demande."
   ))return;
