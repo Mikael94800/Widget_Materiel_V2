@@ -16,6 +16,10 @@ input,select,textarea{width:100%;border:1px solid var(--border);border-radius:7p
 input[type="datetime-local"]::-webkit-calendar-picker-indicator{position:absolute;inset:0;width:auto;height:auto;opacity:0;cursor:pointer}
 button{border:0;border-radius:7px;padding:10px 14px;cursor:pointer;font-weight:bold}button:disabled{opacity:.45;cursor:not-allowed}.primary{background:var(--blue);color:white}.success{background:#d8f3e5;color:#126b47}.danger{background:#fde3e3;color:#a72b35}.neutral{background:#edf2ff;color:#2945a6}
 .info,.error,.ok{padding:12px;border-radius:8px;margin:10px 0;font-size:14px}.info{background:#edf2ff}.error{background:#fde8e8;color:#a72b35}.ok{background:#e2f5eb;color:#126b47}.small{font-size:12px;color:var(--muted)}
+.field-incomplete input,.field-incomplete select,.field-incomplete textarea{border:2px solid var(--red)!important;background:#fff7f7}
+.field-error-note{font-size:12px;color:var(--red);font-weight:700;margin-top:2px}
+.zone-incomplete{outline:2px solid var(--red);outline-offset:3px;border-radius:6px}
+.zone-error-note{font-size:12px;color:var(--red);font-weight:700;margin-top:5px}
 .request{border:1px solid var(--border);padding:15px;border-radius:10px;margin:10px 0;background:white}.history-panel{margin-top:28px}.history-panel details>summary{cursor:pointer;font-weight:bold;font-size:20px;list-style-position:inside}.history-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:16px 0}.history-controls label{min-width:145px}.history-controls select{max-width:320px}.request-header{display:flex;justify-content:flex-start;gap:10px;align-items:center;margin-bottom:10px}.request-materials{font-size:19px;font-weight:700;line-height:1.35}.request-status{display:inline-flex;align-items:center;width:fit-content;padding:4px 9px;border-radius:6px;background:#f1f3f6;color:#596579;font-weight:600;font-size:11px;letter-spacing:.01em}.request-meta{margin:5px 0;font-size:14px}.request-reference{margin-top:8px;font-size:11px;color:var(--muted)}.request-line{border-top:1px solid var(--border);padding:12px 0 2px;margin-top:10px}.request-line-heading{display:flex;justify-content:space-between;align-items:center;gap:12px}.request-line-name{font-size:15px;font-weight:650;line-height:1.4}.line-status{display:inline-flex;align-items:center;flex:0 0 auto;border-radius:999px;padding:5px 11px;font-size:12px;line-height:1.2;font-weight:750;white-space:nowrap}.line-status-attente{background:#fff0cc;color:#875600}.line-status-validee{background:#d8f3e5;color:#126b47}.line-status-refusee{background:#fde3e3;color:#a72b35}.line-status-pretee{background:#dce8ff;color:#2945a6}.line-status-restituee{background:#ccebdd;color:#145b43}.line-status-annulee{background:#edf0f4;color:#596579}.line-status-inconnue{background:#edf0f4;color:#596579}.history-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;padding:14px 0 18px;border-bottom:1px solid var(--border);margin-bottom:8px}.history-controls .field{margin:0}.history-controls label{display:block;margin-bottom:5px}.history-controls select,.history-controls input{padding:9px;font-size:13px}.actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center}.cart-line{display:grid;grid-template-columns:minmax(0,1fr) 100px auto;gap:9px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}.empty{color:var(--muted);font-size:14px;padding:8px 0}
 @media(max-width:650px){body{padding:12px}.page-header{align-items:flex-start;flex-direction:column}.page-header #identity{margin:0;max-width:100%;text-align:left}.grid{grid-template-columns:1fr}.cart-line{grid-template-columns:1fr 85px}.cart-line button{grid-column:1/-1}.request-header{align-items:stretch;flex-direction:column}.request-status{min-width:0;text-align:left}}
 </style></head>
@@ -194,6 +198,7 @@ function afficherPanier(){
 }
 function ajouterAuPanier(){
   const id=Number($("materiel").value),q=Number($("quantite").value),dt=datesFormulaire();
+  if(!verifierChampsObligatoires(["materiel","quantite","debut","fin"])){verifierFormulaire();return;}
   if(!dt.ok||!Number.isInteger(q)||q<1||!id){verifierFormulaire();return;}
   const m=materielParId(id);if(!m||!materielAutorisePourUtilisateur(m)){verifierFormulaire();return;}
   const old=panier.find(x=>Number(x.materielId)===id),already=old?old.quantite:0,available=stockDisponible(id,dt.debut,dt.fin);
@@ -207,9 +212,34 @@ function extraireIdAjoute(result){
   return null;
 }
 function creerNumeroDemande(){const d=new Date(),s=`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}-${String(d.getHours()).padStart(2,"0")}${String(d.getMinutes()).padStart(2,"0")}${String(d.getSeconds()).padStart(2,"0")}`;return `DEM-${s}-${Math.floor(Math.random()*9000+1000)}`;}
+
+function marquerChampIncomplet(id){
+ const el=$(id);if(!el)return;const field=el.closest(".field");if(!field)return;
+ field.classList.add("field-incomplete");
+ if(!field.querySelector(".field-error-note")){const note=document.createElement("div");note.className="field-error-note";note.textContent="Information à compléter";field.appendChild(note);}
+}
+function effacerChampIncomplet(id){
+ const el=$(id);if(!el)return;const field=el.closest(".field");if(!field)return;
+ field.classList.remove("field-incomplete");field.querySelector(".field-error-note")?.remove();
+}
+function verifierChampsObligatoires(ids){
+ let complet=true;ids.forEach(id=>{const el=$(id),value=el?String(el.value??"").trim():"";if(!value){marquerChampIncomplet(id);complet=false;}else effacerChampIncomplet(id);});return complet;
+}
+function installerValidationChamps(ids){
+ ids.forEach(id=>{const el=$(id);if(!el)return;const nettoyer=()=>{if(String(el.value??"").trim())effacerChampIncomplet(id);};el.addEventListener("input",nettoyer);el.addEventListener("change",nettoyer);});
+}
+function marquerZoneIncomplete(id){
+ const el=$(id);if(!el)return;el.classList.add("zone-incomplete");
+ if(!el.nextElementSibling||!el.nextElementSibling.classList.contains("zone-error-note")){const note=document.createElement("div");note.className="zone-error-note";note.textContent="Information à compléter";el.insertAdjacentElement("afterend",note);}
+}
+function effacerZoneIncomplete(id){
+ const el=$(id);if(!el)return;el.classList.remove("zone-incomplete");if(el.nextElementSibling?.classList.contains("zone-error-note"))el.nextElementSibling.remove();
+}
 async function envoyerDemande(){
   const msg=$("message"),btn=$("envoyer"),dt=datesFormulaire();msg.className="";msg.textContent="";
-  if(!currentUserRecord||!panier.length||!dt.ok||!$("details").value.trim()){msg.className="error";msg.textContent=!currentUserRecord?"Profil introuvable.":!panier.length?"Ajoutez au moins un matériel.":!dt.ok?dt.message:"Merci de préciser le motif.";return;}
+  const champsComplets=verifierChampsObligatoires(["debut","fin","details"]);
+  if(!panier.length)marquerZoneIncomplete("panier");else effacerZoneIncomplete("panier");
+  if(!currentUserRecord||!panier.length||!champsComplets||!dt.ok){msg.className="error";msg.textContent=!currentUserRecord?"Profil introuvable.":!panier.length?"Ajoutez au moins un matériel.":!champsComplets?"Certaines informations obligatoires sont à compléter.":dt.message;return;}
   btn.disabled=true;let parentId=null;
   try{
     await chargerDonnees();
@@ -528,6 +558,7 @@ function actualiserMinimumDate(){const n=new Date(),local=new Date(n.getTime()-n
   input.addEventListener("pointerdown",ouvrirCalendrier);
 });
 ["materiel","quantite","debut","fin"].forEach(id=>{ $(id).addEventListener("change",()=>{actualiserMinimumDate();verifierFormulaire();});$(id).addEventListener("input",()=>{actualiserMinimumDate();verifierFormulaire();}); });
+installerValidationChamps(["materiel","quantite","debut","fin","details"]);
 $("ajouter").addEventListener("click",ajouterAuPanier);$("envoyer").addEventListener("click",envoyerDemande);
 ["filtre-historique","historique-date-debut","historique-date-fin","historique-materiel"].forEach(id=>$(id).addEventListener("change",afficherHistoriqueDemandes));
 $("historique-reinitialiser").addEventListener("click",()=>{
